@@ -1,0 +1,2 @@
+-- Release notes are data, not inferred from a deploy or user-generated announcements.
+CREATE TABLE IF NOT EXISTS app_releases(version TEXT PRIMARY KEY,title TEXT NOT NULL,features_json TEXT NOT NULL DEFAULT '[]',fixes_json TEXT NOT NULL DEFAULT '[]',publish_at TEXT NOT NULL,mandatory INTEGER NOT NULL DEFAULT 0,reason TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'draft',created_by BIGINT NOT NULL REFERENCES users(id) DEFERRABLE INITIALLY IMMEDIATE,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);

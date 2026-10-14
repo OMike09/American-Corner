@@ -26,3 +26,26 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 
 /* Media remain within the modal and readable on narrow phones. */
 .publication-media{display:block;max-width:100%;width:min(100%,760px);height:auto;max-height:70vh;object-fit:contain;border-radius:12px;margin:16px 0;background:#111827}#publication-preview{max-width:100%;overflow:hidden}#publication-file-field[hidden]{display:none}
+/* Hierarchical academic pathways: nested branches stay readable on narrow screens. */
+.pathway-root,.pathway-node{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:12px 0;background:var(--surface,#fff)}
+.pathway-root summary,.pathway-node summary{cursor:pointer;line-height:1.45;overflow-wrap:anywhere}
+.pathway-root summary small,.pathway-node summary small{display:block;color:var(--muted,#60717b)}
+.pathway-children{margin-left:18px;padding-left:12px;border-left:2px solid var(--line)}
+.pathway-node .actions,.pathway-root .actions{display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:650px){.pathway-children{margin-left:7px;padding-left:8px}.pathway-root,.pathway-node{padding:8px}.pathway-node .btn,.pathway-root .btn{font-size:11px}}
+
+/* Single official photographic logo; installed icons are generated from the same file. */
+.official-logo{display:block;flex:none;width:76px;height:auto;aspect-ratio:1024/487;object-fit:contain;border-radius:7px;background:#ecf2ed}
+.auth-story .official-logo{width:clamp(96px,14vw,152px);margin-right:12px}
+.sidebar .official-logo{width:76px;margin-right:3px}
+.welcome-logo{width:clamp(120px,18vw,220px);margin-bottom:12px}.notifications-logo{width:145px;margin:0 0 18px}
+@media(max-width:580px){.auth-story .official-logo{width:108px}.welcome-logo{width:145px}}
+
+/* Non-modal release notification; leave content reachable above the banner. */
+.update-visible .content,.update-visible .auth,.update-visible .panel{padding-bottom:230px}
+.update-banner{position:fixed;bottom:max(12px,env(safe-area-inset-bottom));left:clamp(10px,3vw,38px);right:clamp(10px,3vw,38px);z-index:80;display:flex;align-items:flex-start;gap:14px;max-height:min(48vh,340px);overflow:auto;background:#d7f4dd;color:#134d2d;border:2px solid #47a966;border-radius:14px;padding:14px 18px;box-shadow:0 15px 48px #102b3e35}
+.update-banner img{width:75px;height:auto;object-fit:contain;border-radius:6px}.update-copy{flex:1;min-width:0}.update-copy strong,.update-copy span{display:block}.update-copy summary{cursor:pointer;font-weight:700;margin-top:4px;text-decoration:underline}.update-copy ul{margin:4px 0 8px;padding-left:19px}.update-actions{display:flex;gap:8px;flex-wrap:wrap;align-self:center}.update-actions .btn{white-space:normal}
+@media(max-width:580px){.update-banner{display:grid;grid-template-columns:60px minmax(0,1fr);gap:7px 12px;max-height:min(52vh,420px);padding:12px}.update-banner img{width:60px}.update-actions{grid-column:1/-1;justify-content:flex-end;width:100%}.update-visible .content,.update-visible .auth{padding-bottom:290px}}
+/* Keep all forms reachable when the expandable release details occupy a phone screen. */
+.update-visible #app{padding-bottom:min(48vh,370px)}
+@media(max-width:580px){.update-visible #app{padding-bottom:min(55vh,460px)}}

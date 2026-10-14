@@ -2,6 +2,10 @@
 
 # American Corner — version Node.js
 
+> **Colis 13 : delta local non déployé.** Image officielle fournie intégrée à l'interface et aux icônes PWA ; notes de version contrôlées par le chef et bandeau vert de mise à jour web/PWA. Essais locaux SQLite, PostgreSQL et Chromium (largeurs ordinateur/mobile) ; déploiement et appareils physiques encore à vérifier. Voir [LIVRAISON_COLIS_13.md](LIVRAISON_COLIS_13.md).
+
+> **Colis 12 : delta local non déployé.** PDF privés dans le formulaire Annonce, navigation stabilisée et hiérarchie dynamique des parcours ; tests locaux SQLite/PostgreSQL et Chromium (bureau/largeur mobile). Le domaine public nécessite encore un déploiement et une recette. Détails : [LIVRAISON_COLIS_12.md](LIVRAISON_COLIS_12.md).
+
 > **Version PostgreSQL pour les nouvelles inscriptions — déploiement Render encore à vérifier.** Le propriétaire a décidé le 14 octobre 2026 que l'unique ancien utilisateur pourra refaire son inscription : son compte SQLite n'est pas migré. Avec `DATABASE_URL`, les nouveaux comptes et fichiers sont enregistrés dans PostgreSQL, sans repli local en production. Conservez la variable privée Render déjà définie et suivez [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md) pour publier et vérifier l'inscription, la validation puis la reconnexion après redémarrage. [Compte rendu technique](COMPTE_RENDU_MIGRATION_PG.md). Le mode SQLite sans `DATABASE_URL` est réservé à la démonstration locale et aux tests.
 
 Plateforme numérique du Département d’anglais de l’Université de Bouaké. **Backend JavaScript / Express**, interface responsive en HTML/CSS/JavaScript, PostgreSQL pour la production. Le projet s’installe avec **`npm install`** et démarre avec **`npm start`** ; aucune commande Python n’est nécessaire.
