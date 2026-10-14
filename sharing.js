@@ -43,7 +43,7 @@ module.exports=function createSharing({db,one,all,run,now,fail,has,roleNames,aud
   if(admin||secretary||librarian)for(const x of all('SELECT name FROM levels ORDER BY sort'))push('level',x.name,`Étudiants · ${x.name}`);
   else if(teacher)for(const x of all('SELECT DISTINCT level FROM courses WHERE teacher_id=? ORDER BY level',u.id))push('level',x.level,`Mes étudiants · ${x.level}`);
   else if((manager||delegate)&&u.level)push('level',u.level,`Étudiants · ${u.level}`);
-  if(admin||secretary||librarian)for(const x of all('SELECT name FROM tracks ORDER BY name'))push('track',x.name,`Parcours · ${x.name}`);
+  if(admin||secretary||librarian)for(const x of all("SELECT name FROM tracks WHERE status='active' ORDER BY sort_order,name"))push('track',x.name,`Parcours · ${x.name}`);
   else if(trackManager&&u.track)push('track',u.track,`Parcours · ${u.track}`);
   if(admin)for(const x of all('SELECT name FROM roles ORDER BY name'))push('role',x.name,`Rôle · ${x.name}`);
   if(admin||teacher)for(const x of all('SELECT id,title,level FROM courses'+(admin?'':' WHERE teacher_id=?')+' ORDER BY id DESC',...(admin?[]:[u.id])))push('course',x.id,`Cours · ${x.title} (${x.level})`);
@@ -83,7 +83,7 @@ module.exports=function createSharing({db,one,all,run,now,fail,has,roleNames,aud
    }
    if(type==='teachers'||type==='teachers_students')add(`SELECT DISTINCT x.id FROM users x JOIN user_roles ur ON ur.user_id=x.id JOIN roles r ON r.id=ur.role_id WHERE x.status='active' AND r.name IN (${type==='teachers'?'?':'?,?'})`,...(type==='teachers'?['enseignant']:['enseignant','etudiant']));
    if(type==='admins'||type==='level_managers'||type==='role')add(`SELECT DISTINCT x.id FROM users x JOIN user_roles ur ON ur.user_id=x.id JOIN roles r ON r.id=ur.role_id WHERE x.status='active' AND r.name IN (${type==='admins'?"'chef','secretariat','admin_secondaire'":type==='level_managers'?"'responsable_niveau'":'?'})`,...(type==='role'?[id]:[]));
-   if(type==='level'||type==='track')add(`SELECT DISTINCT x.id FROM users x JOIN user_roles ur ON ur.user_id=x.id JOIN roles r ON r.id=ur.role_id WHERE x.status='active' AND r.name='etudiant' AND x.${type==='level'?'level':'track'}=? AND x.year_id=?`,id,year);
+   if(type==='level')add("SELECT DISTINCT x.id FROM users x JOIN user_roles ur ON ur.user_id=x.id JOIN roles r ON r.id=ur.role_id WHERE x.status='active' AND r.name='etudiant' AND x.level=? AND x.year_id=?",id,year);if(type==='track'){const alias=one('SELECT track_id FROM track_aliases WHERE name=?',id);if(alias)add("SELECT DISTINCT x.id FROM users x JOIN user_roles ur ON ur.user_id=x.id JOIN roles r ON r.id=ur.role_id LEFT JOIN user_specializations s ON s.user_id=x.id WHERE x.status='active' AND r.name='etudiant' AND x.year_id=? AND (s.root_track_id=? OR (s.user_id IS NULL AND x.track IN (SELECT name FROM track_aliases WHERE track_id=?)))",year,alias.track_id,alias.track_id)}
    if(type==='course')add("SELECT x.id FROM users x JOIN course_enrollments ce ON ce.user_id=x.id WHERE ce.course_id=? AND x.status='active'",Number(id))
    if(type==='group')add("SELECT x.id FROM users x JOIN group_members gm ON gm.user_id=x.id WHERE gm.group_id=? AND x.status='active'",Number(id));
    if(type==='person')add("SELECT id FROM users WHERE id=? AND status='active'",Number(id));
@@ -112,7 +112,7 @@ module.exports=function createSharing({db,one,all,run,now,fail,has,roleNames,aud
  function syncRecipientsForUser(uid){
   for(const r of all('SELECT r.*,s.targets_json FROM share_recipients r JOIN share_targets s ON s.entity_type=r.entity_type AND s.entity_id=r.entity_id WHERE r.user_id=?',uid)){
    const targets=JSON.parse(r.targets_json),x=info(r.entity_type,r.entity_id),author=one('SELECT * FROM users WHERE id=?',owner(r.entity_type,x));
-   const scopeSensitive=targets.some(t=>t.type==='course'||t.type==='group'||t.type==='level'&&author&&roleNames(author.id).has('enseignant'));
+   const scopeSensitive=targets.some(t=>t.type==='course'||t.type==='group'||t.type==='track'||t.type==='level'&&author&&roleNames(author.id).has('enseignant'));
    if(!scopeSensitive)continue;
    const eligible=resolve(targets,owner(r.entity_type,x)).includes(uid);
    if(!eligible&&!r.revoked_at)run('UPDATE share_recipients SET revoked_at=? WHERE entity_type=? AND entity_id=? AND user_id=?',now(),r.entity_type,r.entity_id,uid);

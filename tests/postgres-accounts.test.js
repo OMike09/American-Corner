@@ -20,7 +20,7 @@ test('PostgreSQL: new accounts, password confirmation, track lifecycle, pending 
  await expect(applicant,'POST','/api/register',{name:'Compte PostgreSQL',email:'pg-account@example.test',identifier:'PG-ACCOUNT',password:'012345',password_confirm:'012345',level:'Licence 2',track:'Linguistique appliquée',year_id:year,kind:'etudiant',roles:['chef']},202);
  await expect(chief,'DELETE',`/api/tracks/${track}`,undefined,409);
  await expect(chief,'PATCH',`/api/tracks/${track}`,{name:'Linguistique confirmée',status:'active'});
- const pending=(await expect(chief,'GET','/api/users')).items.find(x=>x.email==='pg-account@example.test');assert.equal(pending.status,'pending');assert.equal(pending.track,'Linguistique confirmée');assert.deepEqual(pending.roles.map(r=>r.name),['etudiant']);
+ const pending=(await expect(chief,'GET','/api/users')).items.find(x=>x.email==='pg-account@example.test');assert.equal(pending.status,'pending');assert.equal(pending.track,'Linguistique appliquée');assert.equal(pending.specialization.root_track_id,track);assert((await expect(applicant,'GET','/api/meta')).tracks.some(x=>x.name==='Linguistique confirmée'));assert.deepEqual(pending.roles.map(r=>r.name),['etudiant']);
  await expect(chief,'PATCH',`/api/tracks/${track}`,{status:'archived'});assert(!(await expect(intruder,'GET','/api/meta')).tracks.some(x=>x.id===track));
  await expect(chief,'PATCH',`/api/tracks/${track}`,{status:'active'});
  assert.equal(fs.readFileSync(legacyFile).toString('base64'),legacyHash,'l’ancienne SQLite n’est pas modifiée');
