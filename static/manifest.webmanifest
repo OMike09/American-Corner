@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "American Corner — Département d’anglais",
+  "short_name": "American Corner",
+  "description": "Espace numérique du Département d’anglais de l’Université de Bouaké.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f5f0",
+  "theme_color": "#102b3e",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

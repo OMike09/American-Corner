@@ -6,7 +6,7 @@ Votre Web Service Render utilise **Node.js**, avec **`npm install`** et **`npm s
 
 ## 1. Envoyer les fichiers au dépôt vide
 
-Téléchargez `american-corner-node-render.zip`, décompressez-le et placez **les fichiers décompressés** à la racine du dépôt lié à Render. À la racine doivent se trouver `package.json`, `package-lock.json`, `server.js`, `render.yaml` et le dossier `static/`. **Ne téléversez pas seulement le ZIP** : Render ne le décompressera pas automatiquement.
+Téléchargez la dernière archive **`american-corner-node-render-3.zip`** (partage ciblé, suivi et installation Android/iPhone), décompressez-la et placez **les fichiers décompressés** à la racine du dépôt lié à Render. À la racine doivent se trouver `package.json`, `package-lock.json`, `server.js`, `render.yaml` et le dossier `static/`. **Ne téléversez pas seulement le ZIP** : Render ne le décompressera pas automatiquement.
 
 Avec Git, depuis le dossier décompressé :
 
@@ -52,7 +52,10 @@ N’ajoutez pas les mots de passe dans Git ou `render.yaml`. Ne définissez pas 
 2. Les logs doivent indiquer `American Corner on http://0.0.0.0:<port> (demo=false)`.
 3. Visitez `https://VOTRE-SERVICE.onrender.com/healthz` : réponse attendue `{"status":"ok"}`.
 4. Ouvrez l’URL principale et connectez-vous avec `AC_ADMIN_EMAIL` / `AC_ADMIN_PASSWORD`.
-5. Testez avec des informations fictives uniquement. Un compte inscrit reste sur un écran d’attente ; dès que le chef le valide, il entre automatiquement dans son espace si cette page est encore ouverte. Un utilisateur qui a fermé la page peut se connecter immédiatement après validation. Cette mise à jour nécessite un nouveau commit suivi d’un redéploiement de votre Web Service.
+5. Après mise à jour, vérifiez dans **Enseignements → Gérer les inscriptions** les listes déduites pour les anciens cours ; les nouveaux cours exigent une inscription explicite avant un partage par cours ou la saisie de notes. Testez « Mes communications » avec deux comptes fictifs et vérifiez qu’un autre rôle ne peut pas ouvrir l’URL du contenu. Testez avec des informations fictives uniquement. Un compte inscrit reste sur un écran d’attente ; dès que le chef le valide, il entre automatiquement dans son espace si cette page est encore ouverte. Un utilisateur qui a fermé la page peut se connecter immédiatement après validation.
+6. Sur un téléphone, ouvrez **directement** l’URL HTTPS Render dans Chrome (Android) ou Safari (iPhone), puis suivez [INSTALLATION_MOBILE.md](INSTALLATION_MOBILE.md). L’installation depuis une prévisualisation intégrée ou un fichier ZIP n’est pas possible : il faut d’abord déployer la PWA sur Render.
+
+Cette mise à jour crée automatiquement des tables de suivi et des inscriptions de départ pour les anciens cours ; **sauvegardez la base SQLite et le dossier `uploads/` avant le redéploiement** si vous utilisez un stockage persistant. Cette mise à jour nécessite un nouveau commit suivi d’un redéploiement de votre Web Service. Les statistiques et notifications sont conservées dans SQLite : sur Render Free, elles peuvent donc être perdues comme les autres données.
 
 ### Si cela échoue
 
