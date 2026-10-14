@@ -24,6 +24,12 @@ function email(x){x=txt(x,'Adresse e-mail',254).toLowerCase();if(!/^[^\s@]+@[^\s
 function strong(p){if(typeof p!=='string'||p.length<10||p.length>128||!/[A-Za-z]/.test(p)||!/[0-9]/.test(p))fail('Mot de passe : 10 caractères minimum, avec lettres et chiffres.')}
 function pwdHash(p){const salt=crypto.randomBytes(16),key=crypto.pbkdf2Sync(p,salt,310000,32,'sha256');return `pbkdf2_sha256$310000$${salt.toString('base64')}$${key.toString('base64')}`}
 function pwdCheck(p,stored){try{const [_,n,s,k]=stored.split('$');const expected=Buffer.from(k,'base64'),actual=crypto.pbkdf2Sync(String(p),Buffer.from(s,'base64'),Number(n),expected.length,'sha256');return crypto.timingSafeEqual(actual,expected)}catch{return false}}
+function issueSession(res,userId,pending=false,secure=false){
+ const t=token(),csrf=token(),age=pending?24*3600000:7*86400000;
+ run('INSERT INTO sessions(token_hash,user_id,csrf,expires_at,created_at) VALUES (?,?,?,?,?)',hash(t),userId,csrf,new Date(Date.now()+age).toISOString(),now());
+ res.cookie('ac_session',t,{httpOnly:true,sameSite:'lax',secure,maxAge:age,path:'/'});
+ return csrf;
+}
 function init(){db.exec(`
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT NOT NULL,email TEXT UNIQUE NOT NULL,phone TEXT DEFAULT '',identifier TEXT NOT NULL,password TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',level TEXT DEFAULT '',track TEXT DEFAULT '',year_id INTEGER,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,FOREIGN KEY(year_id) REFERENCES years(id));
 CREATE TABLE IF NOT EXISTS roles(id INTEGER PRIMARY KEY,name TEXT UNIQUE NOT NULL,permissions TEXT NOT NULL);
@@ -88,7 +94,10 @@ app.use('/api/documents/upload',express.raw({type:()=>true,limit:'10mb'}));
 app.use('/api',express.json({limit:'1mb'}));
 app.use('/api',(req,res,next)=>{
  const m=/(?:^|;\s*)ac_session=([A-Za-z0-9_-]+)/.exec(req.headers.cookie||'');
- if(m){const s=one('SELECT * FROM sessions WHERE token_hash=?',hash(m[1]));if(s&&Date.parse(s.expires_at)>Date.now()){const u=one("SELECT * FROM users WHERE id=? AND status='active'",s.user_id);if(u){req.user=u;req.session=s}}}
+ if(m){const s=one('SELECT * FROM sessions WHERE token_hash=?',hash(m[1]));if(s&&Date.parse(s.expires_at)>Date.now()){
+  const u=one('SELECT * FROM users WHERE id=?',s.user_id);
+  if(u&&['active','pending'].includes(u.status)){req.session=s;if(u.status==='active')req.user=u;else req.pendingUser=u}
+ }}
  if(!['GET','HEAD','OPTIONS'].includes(req.method)){
   const origin=req.headers.origin;
   if(origin&&new URL(origin).host!==req.headers.host)return res.status(403).json({error:'Origine non autorisée.'});
@@ -102,15 +111,17 @@ function publicRoute(fn){return (req,res,next)=>{try{const out=fn(req,res);if(ou
 function route(method,p,fn){app[method](p,wrap(fn))}
 const attempts=new Map();
 app.get('/api/meta',publicRoute(()=>({name:one("SELECT value FROM settings WHERE key='platform_name'").value,demo:DEMO,years:all('SELECT * FROM years ORDER BY id DESC'),levels:all('SELECT * FROM levels ORDER BY sort'),tracks:all('SELECT * FROM tracks ORDER BY name')})));
-app.get('/api/me',publicRoute(req=>({user:req.user?publicUser(req.user):null,csrf:req.session?.csrf||null})));
-app.post('/api/register',publicRoute(req=>db.transaction(()=>{
+app.get('/api/me',publicRoute(req=>({user:req.user?publicUser(req.user):null,csrf:req.session?.csrf||null,pending:!!req.pendingUser})));
+app.post('/api/register',publicRoute((req,res)=>db.transaction(()=>{
  const d=req.body||{},kind=d.kind||'etudiant';strong(d.password);if(!['etudiant','ancien','enseignant'].includes(kind))fail('Ce statut nécessite une validation par le département.');
  const level=kind==='etudiant'?txt(d.level||'','Niveau',80):'';
  if(kind==='etudiant'&&!one('SELECT 1 FROM levels WHERE name=?',level))fail('Choisissez un niveau valide.');
  const year=one('SELECT id FROM years WHERE id=?',d.year_id);
  if(kind==='etudiant'&&!year)fail('Choisissez une année académique.');
  const id=run('INSERT INTO users(name,email,phone,identifier,password,status,level,track,year_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',txt(d.name||'','Nom',120),email(d.email||''),txt(d.phone||'','Téléphone',30,false),txt(d.identifier||'','Matricule / identifiant',60),pwdHash(d.password),'pending',level,txt(d.track||'','Parcours',100,false),year?.id||null,now(),now()).lastInsertRowid;
- run('INSERT INTO user_roles(user_id,role_id) SELECT ?,id FROM roles WHERE name=?',id,kind);audit(id,'account.register','user',id);return {message:'Demande reçue. Votre compte doit être validé avant la connexion.'};
+ run('INSERT INTO user_roles(user_id,role_id) SELECT ?,id FROM roles WHERE name=?',id,kind);audit(id,'account.register','user',id);
+ const csrf=issueSession(res,id,true,req.secure);res.status(202);
+ return {pending:true,csrf,message:'Demande reçue. Votre espace s’ouvrira automatiquement dès la validation du compte.'};
 })()));
 app.post('/api/login',publicRoute((req,res)=>{
  const d=req.body||{},mail=email(d.email||''),ip=req.ip,key=ip+'|'+mail;
@@ -118,9 +129,11 @@ app.post('/api/login',publicRoute((req,res)=>{
  const candidate=one('SELECT * FROM users WHERE email=?',mail),good=!!candidate&&pwdCheck(d.password,candidate.password);
  run('INSERT INTO login_events(user_id,email,ip,success,created_at) VALUES (?,?,?,?,?)',candidate?.id||null,mail,ip,Number(good),now());
  if(!good){recent.push(Date.now());fail('Identifiants incorrects.',401)}
- if(candidate.status!=='active')fail('Compte non actif : contactez le département.',403);
- attempts.delete(key);const t=token(),csrf=token();run('INSERT INTO sessions(token_hash,user_id,csrf,expires_at,created_at) VALUES (?,?,?,?,?)',hash(t),candidate.id,csrf,new Date(Date.now()+7*86400000).toISOString(),now());
- res.cookie('ac_session',t,{httpOnly:true,sameSite:'lax',secure:req.secure,maxAge:604800000,path:'/'});return {user:publicUser(candidate),csrf};
+ if(!['active','pending'].includes(candidate.status))fail('Compte non actif : contactez le département.',403);
+ attempts.delete(key);
+ const pending=candidate.status==='pending',csrf=issueSession(res,candidate.id,pending,req.secure);
+ if(pending){res.status(202);return {pending:true,csrf,message:'Votre compte attend la validation du département. Cette page ouvrira votre espace automatiquement dès la validation.'}}
+ return {user:publicUser(candidate),csrf};
 }));
 app.post('/api/password/forgot',publicRoute(async req=>{
  const mail=email((req.body||{}).email||''),u=one("SELECT id FROM users WHERE email=? AND status='active'",mail);
@@ -137,7 +150,10 @@ app.post('/api/password/reset',publicRoute(req=>db.transaction(()=>{
  if(!t||Date.parse(t.expires_at)<=Date.now())fail('Lien expiré ou invalide.');
  run('UPDATE users SET password=?,updated_at=? WHERE id=?',pwdHash(d.password),now(),t.user_id);run('UPDATE reset_tokens SET used_at=? WHERE user_id=?',now(),t.user_id);run('DELETE FROM sessions WHERE user_id=?',t.user_id);audit(t.user_id,'password.reset','user',t.user_id);return {message:'Mot de passe modifié. Connectez-vous.'};
 })()));
-route('post','/api/logout',(req,res)=>{run('DELETE FROM sessions WHERE token_hash=?',req.session.token_hash);res.clearCookie('ac_session',{path:'/'});return {ok:true}});
+app.post('/api/logout',publicRoute((req,res)=>db.transaction(()=>{
+ if(req.session)run('DELETE FROM sessions WHERE token_hash=?',req.session.token_hash);
+ res.clearCookie('ac_session',{path:'/'});return {ok:true};
+})()));
 route('patch','/api/profile',req=>{const u=req.user,d=req.body||{};run('UPDATE users SET name=?,phone=?,updated_at=? WHERE id=?',txt(d.name??u.name,'Nom',120),txt(d.phone??u.phone,'Téléphone',30,false),now(),u.id);audit(u.id,'profile.update','user',u.id);return {user:publicUser(one('SELECT * FROM users WHERE id=?',u.id))}});
 route('post','/api/password/change',req=>{const d=req.body||{},u=req.user;if(!pwdCheck(d.current,u.password))fail('Mot de passe actuel incorrect.',403);strong(d.password);run('UPDATE users SET password=?,updated_at=? WHERE id=?',pwdHash(d.password),now(),u.id);run('DELETE FROM sessions WHERE user_id=? AND token_hash<>?',u.id,req.session.token_hash);audit(u.id,'password.change','user',u.id);return {ok:true}});
 route('get','/api/login-events',req=>({items:all('SELECT ip,success,created_at FROM login_events WHERE user_id=? ORDER BY id DESC LIMIT 15',req.user.id)}));
@@ -156,11 +172,20 @@ route('patch','/api/users/:id',req=>{
  if(!has(u,'users.manage')&&(target.status!=='pending'||!['active','rejected'].includes(status)||Object.keys(d).some(x=>!['status','reason'].includes(x))))fail('Validation limitée aux inscriptions en attente.',403);
  if(!STATUSES.has(status))fail('Statut invalide.');if(id===u.id&&status!=='active')fail('Impossible de désactiver votre propre compte.');
  if(['suspended','disabled','rejected'].includes(status)&&!reason)fail('Veuillez indiquer un motif.');
- if('roles' in d){const names=d.roles,valid=new Set(all('SELECT name FROM roles').map(x=>x.name));if(!Array.isArray(names)||!names.length||names.some(n=>!valid.has(n)))fail('Rôles invalides.');if(id===u.id&&!names.includes('chef'))fail('Vous ne pouvez pas retirer votre propre rôle chef.');run('DELETE FROM user_roles WHERE user_id=?',id);for(const n of new Set(names))run('INSERT INTO user_roles(user_id,role_id) SELECT ?,id FROM roles WHERE name=?',id,n)}
+ let rolesChanged=false;
+ if('roles' in d){
+  const names=d.roles,valid=new Set(all('SELECT name FROM roles').map(x=>x.name));
+  if(!Array.isArray(names)||!names.length||names.some(n=>!valid.has(n)))fail('Rôles invalides.');
+  if(id===u.id&&!names.includes('chef'))fail('Vous ne pouvez pas retirer votre propre rôle chef.');
+  const next=new Set(names),old=roleNames(id);
+  rolesChanged=next.size!==old.size||[...next].some(n=>!old.has(n));
+  if(rolesChanged){run('DELETE FROM user_roles WHERE user_id=?',id);for(const n of next)run('INSERT INTO user_roles(user_id,role_id) SELECT ?,id FROM roles WHERE name=?',id,n)}
+ }
  if('email' in d&&email(d.email)!==target.email)fail('Le changement d’adresse e-mail requiert une procédure dédiée.');
  run('UPDATE users SET name=?,status=?,level=?,track=?,updated_at=? WHERE id=?',txt(d.name??target.name,'Nom',120),status,txt(d.level??target.level,'Niveau',80,false),txt(d.track??target.track,'Parcours',100,false),now(),id);
- if(status!=='active'||'roles' in d)run('DELETE FROM sessions WHERE user_id=?',id);
- audit(u.id,'user.update','user',id,{status_before:target.status,status_after:status,roles:d.roles,reason});return {ok:true};
+ if(status!=='active'||rolesChanged)run('DELETE FROM sessions WHERE user_id=?',id);
+ if(target.status==='pending'&&status==='active')notify(id,'Compte validé','Votre compte est actif. Bienvenue sur American Corner.','dashboard');
+ audit(u.id,'user.update','user',id,{status_before:target.status,status_after:status,roles_changed:rolesChanged,roles:d.roles,reason});return {ok:true};
 });
 route('get','/api/roles',()=>({items:all('SELECT * FROM roles ORDER BY name'),available_permissions:PERMISSIONS}));
 route('post','/api/roles',req=>{requireP(req.user,'roles.manage');const d=req.body||{},name=txt(d.name||'','Rôle',60);if(!/^[a-z_]+$/.test(name))fail('Utilisez uniquement des lettres minuscules et des underscores.');if(!Array.isArray(d.permissions)||d.permissions.some(x=>!PERMISSIONS.includes(x)))fail('Permissions invalides.');const id=run('INSERT INTO roles(name,permissions) VALUES (?,?)',name,JSON.stringify(d.permissions)).lastInsertRowid;audit(req.user.id,'role.create','role',id,{permissions:d.permissions});return {id}});

@@ -52,7 +52,7 @@ N’ajoutez pas les mots de passe dans Git ou `render.yaml`. Ne définissez pas 
 2. Les logs doivent indiquer `American Corner on http://0.0.0.0:<port> (demo=false)`.
 3. Visitez `https://VOTRE-SERVICE.onrender.com/healthz` : réponse attendue `{"status":"ok"}`.
 4. Ouvrez l’URL principale et connectez-vous avec `AC_ADMIN_EMAIL` / `AC_ADMIN_PASSWORD`.
-5. Testez avec des informations fictives uniquement.
+5. Testez avec des informations fictives uniquement. Un compte inscrit reste sur un écran d’attente ; dès que le chef le valide, il entre automatiquement dans son espace si cette page est encore ouverte. Un utilisateur qui a fermé la page peut se connecter immédiatement après validation. Cette mise à jour nécessite un nouveau commit suivi d’un redéploiement de votre Web Service.
 
 ### Si cela échoue
 

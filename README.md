@@ -35,7 +35,7 @@ Au premier lancement, le compte chef est créé si aucun chef n’existe dans la
 
 ### Parcours opérationnels
 
-Inscription avec validation, gestion des comptes et rôles, tableaux de bord, années/niveaux/parcours, cours et listes d’étudiants, annonces ciblées et validées, calendrier ciblé, bibliothèque avec téléversement et téléchargement, saisie → validation → publication des notes, demandes administratives et historique, suivi simple des mémoires/thèses, notifications dans l’application, audit et sauvegarde.
+Inscription avec validation **et accès automatique dès l’approbation** (l’inscrit peut attendre sur l’écran de validation ; sa session en attente n’a accès à aucune donnée protégée), gestion des comptes et rôles, tableaux de bord, années/niveaux/parcours, cours et listes d’étudiants, annonces ciblées et validées, calendrier ciblé, bibliothèque avec téléversement et téléchargement, saisie → validation → publication des notes, demandes administratives et historique, suivi simple des mémoires/thèses, notifications dans l’application, audit et sauvegarde. Si l’utilisateur a quitté la page ou si sa session d’attente a expiré, il peut se connecter normalement dès que son compte est validé.
 
 ### Non livrés dans cette version
 

@@ -12,13 +12,20 @@ test('role boundaries, grades, uploads, requests and backup survive real HTTP re
  const guest=new Client(s.base),admin=new Client(s.base),teacher=new Client(s.base),student=new Client(s.base),other=new Client(s.base);
  const meta=await expect(guest,'GET','/api/meta'),year=meta.years[0].id;
  await expect(guest,'GET','/api/users',undefined,401);
- await expect(guest,'POST','/api/register',{name:'Test Etudiant',email:'test@example.org',identifier:'ETU-TEST',password:'TestPassword123',level:'Licence 2',track:'Études anglophones',year_id:year,kind:'etudiant',roles:['chef'],status:'active'});
- await expect(guest,'POST','/api/login',{email:'test@example.org',password:'TestPassword123'},403);
+ const registration=await expect(guest,'POST','/api/register',{name:'Test Etudiant',email:'test@example.org',identifier:'ETU-TEST',password:'TestPassword123',level:'Licence 2',track:'Études anglophones',year_id:year,kind:'etudiant',roles:['chef'],status:'active'},202);
+ assert.equal(registration.pending,true);assert.equal((await expect(guest,'GET','/api/me')).pending,true);
+ await expect(guest,'GET','/api/dashboard',undefined,401);
+ const waiting=new Client(s.base);assert.equal((await expect(waiting,'POST','/api/login',{email:'test@example.org',password:'TestPassword123'},202)).pending,true);
+ assert.equal((await expect(waiting,'GET','/api/me')).pending,true);await expect(waiting,'GET','/api/results',undefined,401);
  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
  const enrolled=(await expect(admin,'GET','/api/users')).items.find(x=>x.email==='test@example.org');assert.equal(enrolled.status,'pending');assert.deepEqual(enrolled.roles.map(x=>x.name),['etudiant']);
  await expect(admin,'PATCH',`/api/users/${enrolled.id}`,{status:'active'},403,{omitCsrf:true});
- await expect(admin,'PATCH',`/api/users/${enrolled.id}`,{status:'active'});
+ await expect(admin,'PATCH',`/api/users/${enrolled.id}`,{status:'active',roles:['etudiant']});
+ const activated=await expect(guest,'GET','/api/me');assert.equal(activated.user.id,enrolled.id);assert.equal(activated.pending,false);
+ assert.equal((await expect(waiting,'GET','/api/me')).user.id,enrolled.id);
+ await expect(guest,'GET','/api/dashboard');
  await expect(student,'POST','/api/login',{email:'test@example.org',password:'TestPassword123'});
+ assert((await expect(student,'GET','/api/notifications')).items.some(x=>x.title==='Compte validé'));
  await expect(student,'PATCH',`/api/users/${enrolled.id}`,{roles:['chef']},403);
  await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
  const course=(await expect(admin,'POST','/api/courses',{title:'Linguistique générale',code:'ANG201',level:'Licence 2',track:'Études anglophones',semester:1,year_id:year,teacher_id:3})).id;
@@ -40,3 +47,26 @@ test('role boundaries, grades, uploads, requests and backup survive real HTTP re
  const backup=(await expect(admin,'POST','/api/backups')).file;assert(fs.existsSync(path.join(s.data,backup)));execFileSync(process.execPath,['manage.js','verify',backup],{cwd:ROOT,env:s.env});
  await expect(admin,'POST','/api/logout');assert.equal((await expect(admin,'GET','/api/me')).user,null);
 }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}});
+test('one-click approval opens an existing pending session immediately; rejection never does',async()=>{
+ const s=await start(false);
+ try{
+  const admin=new Client(s.base),candidate=new Client(s.base),rejected=new Client(s.base),signedOut=new Client(s.base);
+  const year=(await expect(admin,'GET','/api/meta')).years[0].id;
+  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  async function register(c,mail){await expect(c,'POST','/api/register',{name:'Compte Test',email:mail,identifier:mail,password:'TestPassword123',level:'Licence 2',track:'Études anglophones',year_id:year,kind:'etudiant'},202);return (await expect(admin,'GET','/api/users')).items.find(x=>x.email===mail).id}
+  const id=await register(candidate,'approved@example.org');
+  assert.equal((await expect(candidate,'GET','/api/me')).pending,true);
+  await expect(admin,'PATCH',`/api/users/${id}`,{status:'active'});
+  assert.equal((await expect(candidate,'GET','/api/me')).user.id,id);
+  await expect(candidate,'GET','/api/dashboard');
+  const fresh=new Client(s.base);assert.equal((await expect(fresh,'POST','/api/login',{email:'approved@example.org',password:'TestPassword123'})).user.id,id);
+  const rejectId=await register(rejected,'rejected@example.org');
+  await expect(admin,'PATCH',`/api/users/${rejectId}`,{status:'rejected',reason:'Inscription non vérifiée'});
+  assert.deepEqual(await expect(rejected,'GET','/api/me'),{user:null,csrf:null,pending:false});
+  await expect(rejected,'GET','/api/dashboard',undefined,401);
+  const signedOutId=await register(signedOut,'signedout@example.org');
+  await expect(signedOut,'POST','/api/logout');
+  await expect(admin,'PATCH',`/api/users/${signedOutId}`,{status:'active'});
+  assert.equal((await expect(signedOut,'GET','/api/me')).user,null);
+ }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
+});
