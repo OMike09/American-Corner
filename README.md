@@ -6,6 +6,8 @@ Plateforme numérique du Département d’anglais de l’Université de Bouaké.
 
 **Adresse commune :** [https://amer-corner.oymiketech.com](https://amer-corner.oymiketech.com). **Déploiement de votre Web Service Render existant :** voir [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md). **Installation Android/iPhone :** voir [INSTALLATION_MOBILE.md](INSTALLATION_MOBILE.md). **Notifications Web Push :** voir [CONFIGURATION_PUSH.md](CONFIGURATION_PUSH.md).
 
+**Correction formulaire (colis 10) :** inscription et création manuelle de compte avec mot de passe de **6 caractères exactement**, confirmation, messages d'erreur précis et icônes œil fonctionnelles ; connexion à une seule saisie avec œil. La connexion aux comptes existants plus longs reste possible. La version visible sur Render dépend du redéploiement du colis 10 : voir [CORRECTION_MOT_DE_PASSE_6.md](CORRECTION_MOT_DE_PASSE_6.md).
+
 ## Démarrage local
 
 Node.js 20 à 25 requis.

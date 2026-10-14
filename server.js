@@ -28,6 +28,8 @@ function fail(message,status=400){throw new ApiError(message,status)}
 function txt(x,label,max=240,required=true){if(typeof x!=='string')fail(`${label} invalide.`);x=x.trim();if(x.length>max||(required&&!x))fail(`${label} invalide.`);return x}
 function email(x){x=txt(x,'Adresse e-mail',254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x))fail('Adresse e-mail invalide.');return x}
 function strong(p){if(typeof p!=='string'||p.length<10||p.length>128||!/[A-Za-z]/.test(p)||!/[0-9]/.test(p))fail('Mot de passe : 10 caractères minimum, avec lettres et chiffres.')}
+function sixPassword(p){if(typeof p!=='string'||p.length!==6)fail('Le mot de passe doit contenir exactement 6 caractères.');return p}
+function confirmSix(d){sixPassword(d.password);if(d.password!==d.password_confirm)fail('Les mots de passe ne correspondent pas.');return d.password}
 function pwdHash(p){const salt=crypto.randomBytes(16),key=crypto.pbkdf2Sync(p,salt,310000,32,'sha256');return `pbkdf2_sha256$310000$${salt.toString('base64')}$${key.toString('base64')}`}
 function pwdCheck(p,stored){try{const [_,n,s,k]=stored.split('$');const expected=Buffer.from(k,'base64'),actual=crypto.pbkdf2Sync(String(p),Buffer.from(s,'base64'),Number(n),expected.length,'sha256');return crypto.timingSafeEqual(actual,expected)}catch{return false}}
 function issueSession(res,userId,pending=false,secure=false){
@@ -141,7 +143,7 @@ function publicationCategories(){try{const saved=JSON.parse(one("SELECT value FR
 app.get('/api/meta',publicRoute(()=>({name:one("SELECT value FROM settings WHERE key='platform_name'").value,demo:DEMO,years:all('SELECT * FROM years ORDER BY id DESC'),levels:all('SELECT * FROM levels ORDER BY sort'),tracks:all("SELECT * FROM tracks WHERE status='active' ORDER BY name"),categories:publicationCategories().filter(x=>x.status==='active').map(x=>x.name)})));
 app.get('/api/me',publicRoute(req=>({user:req.user?publicUser(req.user):null,csrf:req.session?.csrf||null,pending:!!req.pendingUser})));
 app.post('/api/register',publicRoute((req,res)=>db.transaction(()=>{
- const d=req.body||{},kind=d.kind||'etudiant';if(d.password!==d.password_confirm)fail('Les deux mots de passe ne correspondent pas.');strong(d.password);if(!['etudiant','ancien','enseignant'].includes(kind))fail('Ce statut nécessite une validation par le département.');
+ const d=req.body||{},kind=d.kind||'etudiant';confirmSix(d);if(!['etudiant','ancien','enseignant'].includes(kind))fail('Ce statut nécessite une validation par le département.');
  const level=kind==='etudiant'?txt(d.level||'','Niveau',80):'';
  if(kind==='etudiant'&&!one('SELECT 1 FROM levels WHERE name=?',level))fail('Choisissez un niveau valide.');
  const track=txt(d.track||'','Parcours',100,false);if(kind==='etudiant'&&!DEMO&&db.kind==='postgres')checkTrack(track,level);const year=one('SELECT id FROM years WHERE id=?',d.year_id);
@@ -176,7 +178,7 @@ app.post('/api/password/forgot',publicRoute(async req=>{
  return result;
 }));
 app.post('/api/password/reset',publicRoute(req=>db.transaction(()=>{
- const d=req.body||{};if(d.password!==d.password_confirm)fail('Les deux mots de passe ne correspondent pas.');strong(d.password);const t=one('SELECT * FROM reset_tokens WHERE token_hash=? AND used_at IS NULL',hash(String(d.token||'')));
+ const d=req.body||{};confirmSix(d);const t=one('SELECT * FROM reset_tokens WHERE token_hash=? AND used_at IS NULL',hash(String(d.token||'')));
  if(!t||Date.parse(t.expires_at)<=Date.now())fail('Lien expiré ou invalide.');
  run('UPDATE users SET password=?,updated_at=? WHERE id=?',pwdHash(d.password),now(),t.user_id);run('UPDATE reset_tokens SET used_at=? WHERE user_id=?',now(),t.user_id);run('DELETE FROM sessions WHERE user_id=?',t.user_id);audit(t.user_id,'password.reset','user',t.user_id);return {message:'Mot de passe modifié. Connectez-vous.'};
 })()));
@@ -185,12 +187,12 @@ app.post('/api/logout',publicRoute((req,res)=>db.transaction(()=>{
  res.clearCookie('ac_session',{path:'/'});return {ok:true};
 })()));
 route('patch','/api/profile',req=>{const u=req.user,d=req.body||{};run('UPDATE users SET name=?,phone=?,updated_at=? WHERE id=?',txt(d.name??u.name,'Nom',120),txt(d.phone??u.phone,'Téléphone',30,false),now(),u.id);audit(u.id,'profile.update','user',u.id);return {user:publicUser(one('SELECT * FROM users WHERE id=?',u.id))}});
-route('post','/api/password/change',req=>{const d=req.body||{},u=req.user;if(!pwdCheck(d.current,u.password))fail('Mot de passe actuel incorrect.',403);if(d.password!==d.password_confirm)fail('Les deux mots de passe ne correspondent pas.');strong(d.password);run('UPDATE users SET password=?,updated_at=? WHERE id=?',pwdHash(d.password),now(),u.id);run('DELETE FROM sessions WHERE user_id=? AND token_hash<>?',u.id,req.session.token_hash);audit(u.id,'password.change','user',u.id);return {ok:true}});
+route('post','/api/password/change',req=>{const d=req.body||{},u=req.user;if(!pwdCheck(d.current,u.password))fail('Mot de passe actuel incorrect.',403);confirmSix(d);run('UPDATE users SET password=?,updated_at=? WHERE id=?',pwdHash(d.password),now(),u.id);run('DELETE FROM sessions WHERE user_id=? AND token_hash<>?',u.id,req.session.token_hash);audit(u.id,'password.change','user',u.id);return {ok:true}});
 route('get','/api/login-events',req=>({items:all('SELECT ip,success,created_at FROM login_events WHERE user_id=? ORDER BY id DESC LIMIT 15',req.user.id)}));
 route('get','/api/dashboard',req=>{const u=req.user,admin=has(u,'users.manage');return {users:admin?one('SELECT COUNT(*) n FROM users').n:null,pending:admin?one("SELECT COUNT(*) n FROM users WHERE status='pending'").n:null,open_requests:has(u,'requests.manage')?one("SELECT COUNT(*) n FROM requests WHERE status NOT IN ('treated','rejected')").n:one("SELECT COUNT(*) n FROM requests WHERE owner_id=? AND status NOT IN ('treated','rejected')",u.id).n,unread:push.unreadCount(u.id),results_pending:has(u,'results.validate')?one("SELECT COUNT(*) n FROM results WHERE status='draft'").n:null,by_level:admin?all("SELECT level,COUNT(*) count FROM users WHERE status='active' AND level<>'' GROUP BY level"):[]}});
 route('get','/api/users',req=>{if(!has(req.user,'users.manage')&&!has(req.user,'users.review'))fail('Accès refusé.',403);return {items:all('SELECT * FROM users ORDER BY created_at DESC LIMIT 300').map(publicUser)}});
 route('post','/api/users',req=>{
- const u=req.user,d=req.body||{};requireP(u,'users.manage');strong(d.password);const r=txt(d.role||'','Rôle',80);if(!one('SELECT 1 FROM roles WHERE name=?',r))fail('Rôle inconnu.');
+ const u=req.user,d=req.body||{};requireP(u,'users.manage');confirmSix(d);const r=txt(d.role||'','Rôle',80);if(!one('SELECT 1 FROM roles WHERE name=?',r))fail('Rôle inconnu.');
  const year=one('SELECT id FROM years WHERE id=?',d.year_id);if(d.track&&!DEMO&&db.kind==='postgres')checkTrack(d.track,d.level);
  const id=run('INSERT INTO users(name,email,identifier,password,status,level,track,year_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)',txt(d.name||'','Nom',120),email(d.email||''),txt(d.identifier||'','Identifiant',60),pwdHash(d.password),'active',txt(d.level||'','Niveau',80,false),txt(d.track||'','Parcours',100,false),year?.id||null,now(),now()).lastInsertRowid;
  run('INSERT INTO user_roles(user_id,role_id) SELECT ?,id FROM roles WHERE name=?',id,r);audit(u.id,'user.create','user',id,{role:r});return {id};

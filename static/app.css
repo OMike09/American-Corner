@@ -21,7 +21,8 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 .message-body{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:580px){.grid.two-col,.grid.three-col{grid-template-columns:minmax(0,1fr)}.list-item{flex-wrap:wrap}.content,.card{min-width:0}.table-wrap{max-width:100%;overflow:auto}.sidebar{width:min(88vw,320px)}}
 
-.password-row{display:flex;align-items:stretch;gap:8px;min-width:0}.password-row input{flex:1;min-width:0}.password-row button{flex:none;white-space:nowrap}@media(max-width:380px){.password-row{flex-wrap:wrap}.password-row button{width:100%;justify-content:center}}
+/* Accessible eye controls are positioned inside the right edge of each password field. */
+.password-row{position:relative;min-width:0;width:100%}.password-row input{display:block;box-sizing:border-box;width:100%;min-width:0;padding-right:58px;min-height:48px}.password-eye{position:absolute;right:3px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:46px;height:46px;min-height:46px;border:0;border-radius:9px;background:transparent;color:#17465b;cursor:pointer;touch-action:manipulation}.password-eye:hover,.password-eye:focus-visible{background:#e4f1f0}.password-eye:focus-visible{outline:2px solid #156e69;outline-offset:1px}.password-eye svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}.password-feedback{color:#a72d31;min-height:1.35em;margin:2px 0 10px;font-size:14px;font-weight:650}.password-feedback:empty{min-height:0;margin:0}.password-row input[aria-invalid="true"]{border-color:#a72d31}
 
 /* Media remain within the modal and readable on narrow phones. */
 .publication-media{display:block;max-width:100%;width:min(100%,760px);height:auto;max-height:70vh;object-fit:contain;border-radius:12px;margin:16px 0;background:#111827}#publication-preview{max-width:100%;overflow:hidden}#publication-file-field[hidden]{display:none}

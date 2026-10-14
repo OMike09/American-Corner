@@ -21,9 +21,15 @@ Utilisez le **Web Service déjà existant**. N'importez pas `render.yaml` pour e
 
 ## 2. Publier le colis
 
-Décompressez `american-corner-node-render-9-postgresql.zip`. Placez le **contenu** du dossier à la racine du dépôt lié à Render (par exemple `server.js`, `package.json`, `package-lock.json`, `migrations/`, `static/`). N'envoyez ni le ZIP seul ni `node_modules/`, ni sauvegarde de base, ni mot de passe. Poussez les fichiers sur la branche que le Web Service utilise ; Render lancera `npm install` puis `npm start`.
+Décompressez `american-corner-node-render-10-password6.zip`. Placez le **contenu** du dossier à la racine du dépôt lié à Render (par exemple `server.js`, `package.json`, `package-lock.json`, `migrations/`, `static/`). N'envoyez ni le ZIP seul ni `node_modules/`, ni sauvegarde de base, ni mot de passe. Poussez les fichiers sur la branche que le Web Service utilise ; Render lancera `npm install` puis `npm start`.
 
 **À propos de l'ancien compte :** si l'ancienne base SQLite subsiste dans `AC_DATA`, le serveur émet un avertissement mais ne la lit, ne la modifie et ne la supprime pas. Son ancien compte ne sera pas connecté automatiquement : l'intéressé se réinscrit après la mise en service, puis attend la validation du chef. Si vous avez encore accès à l'ancienne base et souhaitez la garder comme précaution, copiez-la hors de Render ; ce n'est plus un préalable bloquant pour ce compte abandonné.
+
+## Version 10 : mot de passe et cache PWA
+
+Après publication du nouveau commit sur le **Web Service existant**, vérifier depuis un navigateur privé : `/app.js` doit contenir `Le mot de passe doit contenir exactement 6 caractères.`, `/sw.js` doit contenir `american-corner-public-v4-password6`, et la page `/` doit demander `/app.js?v=10-password6` et `/app.css?v=10-password6`. Vérifier ensuite visuellement **Inscription**, les deux champs et les deux boutons œil ; cliquer pour afficher/masquer sans effacer, essayer `012345`, `012346` (refus), puis `012345` deux fois (demande en attente). Vérifier aussi la page Connexion, où une seule saisie de mot de passe et un œil sont attendus.
+
+Une PWA déjà installée peut encore afficher un ancien écran tant que son service worker n'a pas activé la nouvelle version : fermer/réouvrir l'application avec une connexion, actualiser la page, puis vérifier la version du worker. Si les fichiers publics `/app.js`, `/sw.js` ou `/` indiquent encore l'ancienne version, **ce n'est pas seulement un cache local : contrôler le dépôt, la branche liée au service et les logs du dernier déploiement Render**. Ne pas supprimer les données API ou la base PostgreSQL pour résoudre un problème de cache.
 
 ## 3. Vérifier réellement la persistance des nouveaux comptes
 
