@@ -1,3 +1,5 @@
+> **Colis 11 :** voir [LIVRAISON_COLIS_11.md](LIVRAISON_COLIS_11.md) pour les nouvelles rubriques, les limites de l’analyse PDF, les tests locaux et l’état non déployé.
+
 # American Corner — version Node.js
 
 > **Version PostgreSQL pour les nouvelles inscriptions — déploiement Render encore à vérifier.** Le propriétaire a décidé le 14 octobre 2026 que l'unique ancien utilisateur pourra refaire son inscription : son compte SQLite n'est pas migré. Avec `DATABASE_URL`, les nouveaux comptes et fichiers sont enregistrés dans PostgreSQL, sans repli local en production. Conservez la variable privée Render déjà définie et suivez [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md) pour publier et vérifier l'inscription, la validation puis la reconnexion après redémarrage. [Compte rendu technique](COMPTE_RENDU_MIGRATION_PG.md). Le mode SQLite sans `DATABASE_URL` est réservé à la démonstration locale et aux tests.

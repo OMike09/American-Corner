@@ -1,6 +1,6 @@
 /* American Corner PWA: cache the public shell only. Never cache account/API/grades/files. */
-const CACHE='american-corner-public-v4-password6';
-const SHELL=['/','/offline.html','/app.css','/app.js','/app.css?v=10-password6','/app.js?v=10-password6','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/maskable-512.png','/icons/apple-touch-icon.png','/icons/favicon.svg'];
+const CACHE='american-corner-public-v5-language';
+const SHELL=['/','/offline.html','/app.css','/app.js','/i18n.js','/i18n.js?v=11-language','/app.css?v=11-language','/app.js?v=11-language','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png','/icons/maskable-512.png','/icons/apple-touch-icon.png','/icons/favicon.svg'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });

@@ -33,7 +33,7 @@ test('control, maintenance, private messages, video and font-size screens render
  assert.equal(fontValue,1.25);
  assert.match(vm.runInContext('displaySection()',context),/Taille du texte/);
  assert.match(vm.runInContext('messagesPage()',context),/5 restant/);
- assert.match(vm.runInContext('videosPage()',context),/sur 2 utilisée/);
+ assert.match(vm.runInContext('videosPage()',context),/Vidéos déjà publiées/);assert.doesNotMatch(vm.runInContext('videosPage()',context),/data-form=\"video\"/);
  assert.match(vm.runInContext('maintenancePage()',context),/Analyse et maintenance/);
  assert.match(vm.runInContext('controlsPage()',context),/Paramètres généraux et contrôle/);
  assert.equal(vm.runInContext("visibleNav(nav.find(x=>x[0]==='controls'))",context),true);
