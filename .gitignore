@@ -1,0 +1,13 @@
+# Never commit real user records, grades, uploaded files or backup copies.
+data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+.env
+.env.*
+node_modules/
+npm-debug.log*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
