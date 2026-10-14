@@ -1,6 +1,6 @@
 # Optional Blueprint. If your Render Web Service already exists, edit its settings
 # instead of importing this file and creating a second service.
-# The Free plan is an ephemeral demonstration only: do not store real academic data.
+# Free Web Service filesystem is ephemeral; accounts and files live in the separately backed-up PostgreSQL database.
 services:
   - type: web
     name: american-corner
@@ -20,3 +20,5 @@ services:
         sync: false
       - key: AC_ADMIN_PASSWORD
         sync: false
+# DATABASE_URL is already configured privately on the existing Render service.
+# Never paste its value in this file. The former sole user will re-register; verify new accounts after restart.

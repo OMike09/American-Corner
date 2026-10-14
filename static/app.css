@@ -20,3 +20,8 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 .field input,.field select,.field textarea{max-width:100%;min-height:42px}
 .message-body{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:580px){.grid.two-col,.grid.three-col{grid-template-columns:minmax(0,1fr)}.list-item{flex-wrap:wrap}.content,.card{min-width:0}.table-wrap{max-width:100%;overflow:auto}.sidebar{width:min(88vw,320px)}}
+
+.password-row{display:flex;align-items:stretch;gap:8px;min-width:0}.password-row input{flex:1;min-width:0}.password-row button{flex:none;white-space:nowrap}@media(max-width:380px){.password-row{flex-wrap:wrap}.password-row button{width:100%;justify-content:center}}
+
+/* Media remain within the modal and readable on narrow phones. */
+.publication-media{display:block;max-width:100%;width:min(100%,760px);height:auto;max-height:70vh;object-fit:contain;border-radius:12px;margin:16px 0;background:#111827}#publication-preview{max-width:100%;overflow:hidden}#publication-file-field[hidden]{display:none}

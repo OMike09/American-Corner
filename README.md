@@ -1,6 +1,8 @@
 # American Corner — version Node.js
 
-Plateforme numérique du Département d’anglais de l’Université de Bouaké. **Backend JavaScript / Express**, interface responsive en HTML/CSS/JavaScript, base SQLite. Le projet s’installe avec **`npm install`** et démarre avec **`npm start`** ; aucune commande Python n’est nécessaire.
+> **Version PostgreSQL pour les nouvelles inscriptions — déploiement Render encore à vérifier.** Le propriétaire a décidé le 14 octobre 2026 que l'unique ancien utilisateur pourra refaire son inscription : son compte SQLite n'est pas migré. Avec `DATABASE_URL`, les nouveaux comptes et fichiers sont enregistrés dans PostgreSQL, sans repli local en production. Conservez la variable privée Render déjà définie et suivez [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md) pour publier et vérifier l'inscription, la validation puis la reconnexion après redémarrage. [Compte rendu technique](COMPTE_RENDU_MIGRATION_PG.md). Le mode SQLite sans `DATABASE_URL` est réservé à la démonstration locale et aux tests.
+
+Plateforme numérique du Département d’anglais de l’Université de Bouaké. **Backend JavaScript / Express**, interface responsive en HTML/CSS/JavaScript, PostgreSQL pour la production. Le projet s’installe avec **`npm install`** et démarre avec **`npm start`** ; aucune commande Python n’est nécessaire.
 
 **Adresse commune :** [https://amer-corner.oymiketech.com](https://amer-corner.oymiketech.com). **Déploiement de votre Web Service Render existant :** voir [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md). **Installation Android/iPhone :** voir [INSTALLATION_MOBILE.md](INSTALLATION_MOBILE.md). **Notifications Web Push :** voir [CONFIGURATION_PUSH.md](CONFIGURATION_PUSH.md).
 
@@ -30,10 +32,10 @@ Au premier lancement, le compte chef est créé si aucun chef n’existe dans la
 - `controls.js` : paramètres du chef, surveillance technique, messagerie privée, vidéos, préférences d’affichage et nettoyage limité aux temporaires.
 - `server.js` : API Express `/api/*`, sessions stockées en base, vérification des permissions **côté serveur**, SQL paramétré, validation des requêtes et journal d’audit.
 - `static/` : interface responsive sans framework, servie depuis le même domaine ; requêtes par URL relative. Manifeste PWA, icônes Android/iOS et service worker pour l’installation sur l’écran d’accueil. Seuls les fichiers publics de l’interface sont mis en cache : jamais l’API, les notes ou les documents privés.
-- `better-sqlite3` : base relationnelle dans `AC_DATA/american_corner.sqlite3`. `AC_DATA/uploads` conserve les fichiers téléversés (limite configurable jusqu’à 10 Mo pour les documents ; vidéos jusqu’à 25 Mo ; type contrôlé, nom interne aléatoire et accès vérifié).
+- `DATABASE_URL` : base PostgreSQL requise en production. Comptes et fichiers binaires référencés sont conservés dans PostgreSQL ; SQLite et `AC_DATA/uploads` ne servent qu’au développement local autorisé. Images compressées en WebP avec `sharp`, vidéo sans transcodage. Les limites de fichiers restent paramétrables.
 - Mots de passe hachés par PBKDF2-HMAC-SHA256 avec sel aléatoire ; cookie HttpOnly/SameSite, option Secure derrière HTTPS, jeton CSRF, vérification de l’origine et limitation des tentatives de connexion.
 - Les restrictions sont vérifiées sur les ressources : étudiant et ses seules notes publiées, enseignant et ses cours, public visé par une annonce, propriétaire d’une demande, responsable d’un mémoire.
-- `manage.js` : vérification et restauration **hors ligne** des sauvegardes SQLite. Le chef peut créer une sauvegarde depuis l’interface.
+- `manage.js` : vérification hors ligne des exports SQLite et PostgreSQL ; `restore-postgres.js` : restauration uniquement dans une destination PostgreSQL vide et isolée. Le chef peut créer une sauvegarde depuis l’interface.
 
 ### Parcours opérationnels
 
@@ -74,14 +76,7 @@ Forum, inscription aux événements, exports PDF/Excel/CSV, import massif de not
 
 ## Sauvegarde et restauration
 
-Le chef peut créer un fichier `backup-*.sqlite3` depuis Paramètres. Après avoir arrêté le serveur :
-
-```bash
-AC_DATA=/chemin/vers/stockage-prive node manage.js verify backup-AAAAmmjj-HHMMSS.sqlite3
-AC_DATA=/chemin/vers/stockage-prive node manage.js restore backup-AAAAmmjj-HHMMSS.sqlite3 --confirm
-```
-
-Une copie de sécurité de l’ancienne base est créée. **Les fichiers `AC_DATA/uploads` doivent être sauvegardés séparément.**
+En production PostgreSQL, le chef peut créer un export `.pg.json.gz` dans « Paramètres ». Il faut **le télécharger immédiatement hors du Web Service Render** et conserver une copie privée : le système de fichiers du service est éphémère. `node manage.js verify fichier.pg.json.gz` vérifie son intégrité ; `restore-postgres.js` ne restaure que vers une base **distincte et vide**. Les comptes et fichiers sont dans PostgreSQL : planifier une sauvegarde automatique indépendante et tester sa restauration. Les commandes SQLite historiques ne concernent que les anciens déploiements ou la démonstration locale.
 
 ## Tests
 
@@ -93,4 +88,4 @@ Les tests lancent un serveur Node réel sur une base temporaire et vérifient le
 
 ## Point critique : hébergement Render gratuit
 
-Le système de fichiers d’un Web Service Render gratuit n’est pas un stockage permanent. Une base SQLite, des notes et des documents enregistrés localement peuvent disparaître. **Utilisez ce déploiement seulement pour une démonstration sans données personnelles réelles.** Pour la production, il faut soit un plan compatible avec un disque persistant et des sauvegardes hors site, soit migrer explicitement vers PostgreSQL **et** un stockage d’objets pour les fichiers. Définir simplement `DATABASE_URL` ne migre pas le code SQLite.
+Les comptes créés après l'activation de ce colis sont conservés dans la base PostgreSQL indiquée par le `DATABASE_URL` privé de Render ; ils ne sont plus placés dans la SQLite éphémère du Web Service. Leur durabilité dépend de la disponibilité, de la rétention et des sauvegardes du **service PostgreSQL** : ne laissez pas les sauvegardes sur le disque éphémère. L'ancien compte SQLite volontairement abandonné devra se réinscrire et être approuvé à nouveau. La vérification sur Render (inscription, approbation, redémarrage, reconnexion) reste à effectuer conformément à [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md).

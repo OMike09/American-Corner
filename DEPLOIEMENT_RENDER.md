@@ -1,91 +1,47 @@
-# American Corner sur Render — installation Node.js
+# Mise en service PostgreSQL sur le Web Service Render existant
 
-Votre Web Service Render utilise **Node.js**, avec **`npm install`** et **`npm start`**. Cette version du projet correspond à ces commandes : `npm start` exécute `node server.js`. Il ne dépend plus de Python.
+**Décision du propriétaire, 14 octobre 2026 :** l'unique ancien utilisateur peut refaire son inscription. Il n'est donc **pas nécessaire de migrer cet ancien compte** pour commencer à enregistrer les nouvelles inscriptions dans PostgreSQL. Ce choix n'efface pas l'ancien fichier SQLite : il n'est simplement plus lu lorsque `DATABASE_URL` est disponible. Ne dites pas à l'ancien utilisateur que son compte a été transféré.
 
-> **Render gratuit = démonstration seulement.** SQLite et les documents déposés sur le système de fichiers du service peuvent être perdus au redémarrage ou au redéploiement. N’y enregistrez aucune donnée personnelle, note ou document universitaire réel.
+**Important :** cette archive n'a pas été déployée ni testée sur votre Render réel par l'assistant. Les vérifications ci-dessous sont à effectuer lors de la mise en service.
 
-## 1. Envoyer les fichiers au dépôt vide
+## 1. Réglages à conserver sur le service existant
 
-Téléchargez la dernière archive **`american-corner-node-render-7.zip`** (contrôle général, messagerie, vidéos, affichage et maintenance), décompressez-la et placez **les fichiers décompressés** à la racine du dépôt lié à Render. À la racine doivent se trouver `package.json`, `package-lock.json`, `server.js`, `render.yaml` et le dossier `static/`. **Ne téléversez pas seulement le ZIP** : Render ne le décompressera pas automatiquement.
-
-Avec Git, depuis le dossier décompressé :
-
-```bash
-git init
-git branch -M main
-git remote add origin URL_REELLE_DU_DEPOT
-git add .
-git commit -m "American Corner Node.js pour Render"
-git push -u origin main
-```
-
-Si le dépôt contient déjà un commit, clonez-le d’abord et copiez les fichiers dedans. Le `.gitignore` exclut `node_modules/`, `.env`, `data/`, les bases SQLite et les documents ; vérifiez le contenu du commit avant l’envoi.
-
-## 2. Paramétrer votre Web Service existant
-
-Dans **Render → votre Web Service → Settings**, utilisez :
-
-| Paramètre | Valeur |
+| Réglage | Valeur |
 |---|---|
-| Runtime/Environment | **Node.js** |
-| Branch | `main` (ou votre branche réelle) |
-| Root Directory | vide si `package.json` est à la racine du dépôt |
-| Build Command | **`npm install`** |
-| Start Command | **`npm start`** |
-| Health Check Path | `/healthz` |
-| Instance Type | Free **pour démonstration seulement** |
+| Runtime | **Node.js** |
+| Build Command | `npm install` |
+| Start Command | `npm start` |
+| Health Check | `/healthz` |
+| `AC_DEMO` | `0` |
+| `DATABASE_URL` | **Déjà défini chez vous sur Render : le conserver, ne jamais copier sa valeur dans le code, Git ou une capture** |
+| `AC_ADMIN_EMAIL`, `AC_ADMIN_PASSWORD` | À conserver dans les variables privées Render pour créer le chef au premier démarrage d'une base PostgreSQL sans chef ; ne pas partager le mot de passe |
+| `AC_BASE_URL` | `https://amer-corner.oymiketech.com` |
 
-Dans **Environment**, ajoutez :
+Utilisez le **Web Service déjà existant**. N'importez pas `render.yaml` pour en créer un second. Vérifiez que `DATABASE_URL` pointe sur la base PostgreSQL que vous souhaitez conserver et qu'elle restera disponible selon les conditions de votre offre. Si cette base contient déjà des comptes, cette application **ne la vide pas**. Si elle contient un schéma inconnu ou si la connexion échoue, le serveur s'arrête : aucune écriture SQLite de secours.
 
-| Variable | Valeur |
-|---|---|
-| `AC_DEMO` | `0` — ne jamais publier les comptes de démonstration |
-| `AC_DATA` | `/tmp/american-corner-data` — stockage éphémère sur Free |
-| `AC_BASE_URL` | `https://amer-corner.oymiketech.com` — domaine commun pour les liens envoyés |
-| `AC_ADMIN_EMAIL` | votre adresse e-mail d’administration |
-| `AC_ADMIN_PASSWORD` | mot de passe long, unique, contenant lettres et chiffres |
+## 2. Publier le colis
 
-Pour les alertes en arrière-plan, ajoutez aussi `AC_VAPID_PUBLIC_KEY`, `AC_VAPID_PRIVATE_KEY` et `AC_VAPID_SUBJECT` selon [CONFIGURATION_PUSH.md](CONFIGURATION_PUSH.md). Sans ces trois variables, la page Notifications et les vues fonctionnent, **mais aucun push système n’est envoyé**. Conservez les mêmes clés à chaque déploiement.
+Décompressez `american-corner-node-render-9-postgresql.zip`. Placez le **contenu** du dossier à la racine du dépôt lié à Render (par exemple `server.js`, `package.json`, `package-lock.json`, `migrations/`, `static/`). N'envoyez ni le ZIP seul ni `node_modules/`, ni sauvegarde de base, ni mot de passe. Poussez les fichiers sur la branche que le Web Service utilise ; Render lancera `npm install` puis `npm start`.
 
-N’ajoutez pas les mots de passe dans Git ou `render.yaml`. Ne définissez pas `PORT` : Render le fournit. `render.yaml` est un Blueprint **facultatif** ; comme votre Web Service existe déjà, ne l’importez pas pour créer un deuxième service.
+**À propos de l'ancien compte :** si l'ancienne base SQLite subsiste dans `AC_DATA`, le serveur émet un avertissement mais ne la lit, ne la modifie et ne la supprime pas. Son ancien compte ne sera pas connecté automatiquement : l'intéressé se réinscrit après la mise en service, puis attend la validation du chef. Si vous avez encore accès à l'ancienne base et souhaitez la garder comme précaution, copiez-la hors de Render ; ce n'est plus un préalable bloquant pour ce compte abandonné.
 
-## 3. Déployer et vérifier
+## 3. Vérifier réellement la persistance des nouveaux comptes
 
-1. Envoyez les fichiers au dépôt. Lancez **Manual Deploy → Deploy latest commit**, si le déploiement automatique n’a pas démarré.
-2. Les logs doivent indiquer `American Corner on http://0.0.0.0:<port> (demo=false)`.
-3. Visitez `https://amer-corner.oymiketech.com/healthz` : réponse attendue `{"status":"ok"}`. Le domaine peut déjà répondre alors qu’une ancienne version tourne encore : vérifiez également que `/chef` répond **200**, et non **404**.
-4. **Chef :** ouvrez `https://amer-corner.oymiketech.com/chef` et connectez-vous avec `AC_ADMIN_EMAIL` / `AC_ADMIN_PASSWORD`. **Autres utilisateurs :** ouvrez l’URL principale sans `/chef`. N’ajoutez pas l’adresse réservée aux menus ou aux consignes publiques. Les identifiants du chef sont refusés sur la connexion publique ; les autres comptes sont refusés sur l’entrée réservée.
-5. Après mise à jour, vérifiez dans **Enseignements → Gérer les inscriptions** les listes déduites pour les anciens cours ; les nouveaux cours exigent une inscription explicite avant un partage par cours ou la saisie de notes. Testez « Mes communications » avec deux comptes fictifs et vérifiez qu’un autre rôle ne peut pas ouvrir l’URL du contenu. Testez avec des informations fictives uniquement. Un compte inscrit reste sur un écran d’attente ; dès que le chef le valide, il entre automatiquement dans son espace si cette page est encore ouverte. Un utilisateur qui a fermé la page peut se connecter immédiatement après validation.
-6. Sur un téléphone, ouvrez **directement** https://amer-corner.oymiketech.com dans Chrome (Android) ou Safari (iPhone), puis suivez [INSTALLATION_MOBILE.md](INSTALLATION_MOBILE.md). L’installation depuis une prévisualisation intégrée ou un fichier ZIP n’est pas possible : il faut d’abord déployer la PWA sur Render.
-7. Vérifiez qu’une même personne ouvrant deux fois une publication apparaît toujours comme **une seule vue** dans « Suivi des publications » ; les ouvertures répétées restent une mesure technique distincte. Après avoir configuré les clés VAPID, activez les notifications sur chaque téléphone, lancez le bouton de test et vérifiez les états application ouverte, en arrière-plan et fermée. La vérification sur appareils réels doit être faite par vos soins après déploiement. Voir [CONFIGURATION_PUSH.md](CONFIGURATION_PUSH.md).
+1. Voir dans les logs que le service démarre et que `/healthz` répond `{"status":"ok"}`. Un `DATABASE_URL` absent ou indisponible doit empêcher le démarrage, **pas produire une nouvelle base SQLite en production**.
+2. Accéder directement à `https://amer-corner.oymiketech.com/chef` et connecter le chef. La page publique `/` ne présente pas l'entrée du chef. Sur PostgreSQL vide, le chef initial est créé avec les deux variables privées d'administration.
+3. Depuis la page publique, inscrire un **compte d'essai inédit** (adresse et identifiant jamais utilisés) ; confirmer le mot de passe. L'inscription est **en attente**, pas déjà active. Si vous utilisez un parcours, le chef peut d'abord en créer un dans « Structure académique ».
+4. Le chef retrouve ce compte dans « Utilisateurs », le valide ; l'utilisateur peut se connecter immédiatement. Seul le serveur peut octroyer les rôles, pas le formulaire d'inscription.
+5. Faire un redémarrage contrôlé du Web Service, puis vérifier que **ce même nouveau compte** peut encore se connecter, que son statut et son rôle restent corrects et que le chef le voit toujours. Cette vérification en production doit encore être faite.
+6. Créer une sauvegarde PostgreSQL depuis « Paramètres », **la télécharger hors du service** et tester sa vérification (`node manage.js verify fichier.pg.json.gz`). Tester ultérieurement une restauration sur une base PostgreSQL **séparée et vide**, jamais sur la base contenant des comptes actifs.
 
-**Changement de domaine pour les téléphones :** les installations faites auparavant depuis `*.onrender.com` et leurs abonnements push ne basculent pas automatiquement vers `amer-corner.oymiketech.com`. Ouvrez/réinstallez la PWA depuis le sous-domaine et réautorisez les notifications. Les requêtes API, le service worker et les liens de notification suivent ensuite ce domaine.
+Les comptes, sessions, rôles, résultats, messages et fichiers nouveaux sont stockés dans PostgreSQL lorsque `DATABASE_URL` est défini. Le système n'a pas besoin de l'ancien utilisateur pour les enregistrer. Les documents/vidéos/images joints sont dans PostgreSQL (`file_blobs`), pas uniquement dans `AC_DATA/uploads` ; surveillez la capacité et la politique de sauvegarde de la **base PostgreSQL elle-même**. Le système de fichiers du Web Service gratuit et les sauvegardes qui y restent peuvent disparaître au redéploiement.
 
-Cette mise à jour conserve les tables de suivi et les inscriptions de départ créées lors du colis 3 ; **sauvegardez la base SQLite et le dossier `uploads/` avant le redéploiement** si vous utilisez un stockage persistant. Cette mise à jour nécessite un nouveau commit suivi d’un redéploiement de votre Web Service. Les statistiques et notifications sont conservées dans SQLite : sur Render Free, elles peuvent donc être perdues comme les autres données.
+## Si le démarrage échoue
 
-### Si cela échoue
+- `DATABASE_URL requis` : vérifier sa présence dans les variables privées du **bon Web Service** (ne pas partager la valeur).
+- « Base PostgreSQL contient déjà des tables inconnues » : ne pas réinitialiser cette base ; inspecter son schéma et choisir prudemment la bonne base.
+- « Premier démarrage : configurez AC_ADMIN_EMAIL et AC_ADMIN_PASSWORD » : renseigner ces variables privées pour le compte chef initial.
+- `Missing script: start` : les fichiers décompressés ne sont pas à la racine du dépôt ou le Root Directory Render est incorrect.
+- Erreur réseau PostgreSQL : vérifier l'état de la base et son URL privée ; le serveur ne revient pas à SQLite.
 
-- `Missing script: start` → `package.json` n’est pas dans le **Root Directory** configuré dans Render.
-- `Cannot find module 'better-sqlite3'` → vérifiez que `npm install` s’exécute sans erreur dans les logs. Si une version Node incompatible est utilisée, sélectionnez une version Node 20, 22 ou 24 ; le projet accepte Node 20 à 25.
-- `Premier démarrage : configurez AC_ADMIN_EMAIL...` → ajoutez les deux variables d’administration.
-- `Application failed to respond` → vérifiez `npm start`, le port ouvert et les logs.
-- Données disparues après redémarrage → conséquence attendue du stockage éphémère sur le plan gratuit.
-
-## 4. Avant une utilisation réelle du département
-
-**Le déploiement gratuit ne garantit pas la conservation des données.** Deux trajectoires possibles :
-
-1. **Disque persistant Render, si le plan choisi le permet** : monter le disque sur un chemin dédié, placer `AC_DATA` sur ce disque et sauvegarder également les fichiers `uploads/` hors site. Limiter l’application à une seule instance SQLite.
-2. **PostgreSQL + stockage d’objets** : migrer effectivement `server.js` de SQLite vers PostgreSQL et stocker les documents dans un service persistant. La simple présence d’une variable `DATABASE_URL` ne suffit pas.
-
-Pour les réinitialisations par courriel en production, conserver `AC_BASE_URL=https://amer-corner.oymiketech.com` et configurer également `AC_SMTP_HOST`, `AC_SMTP_PORT`, `AC_SMTP_USER`, `AC_SMTP_PASSWORD` et `AC_SMTP_FROM`. Prévoir aussi une revue de sécurité, une politique de confidentialité, des sauvegardes/restaurations testées et la validation officielle des circuits de résultats.
-
-## Colis 7 — nouveaux réglages et limites
-
-Après déploiement, le chef ouvre `/chef`, puis **Paramètres généraux et contrôle**, **Analyse et maintenance** et **Rôles & permissions**. Les comptes ordinaires utilisent les rubriques **Messages privés**, **Vidéos** et **Mon profil → Taille du texte**. Les préférences sont enregistrées dans SQLite ; la messagerie et les vidéos sont également persistantes uniquement si `AC_DATA` et `uploads/` sont sur un disque persistant. **Avant la migration, sauvegardez la base et les fichiers téléversés ensemble**. Sur Render Free sans disque persistant, un redéploiement peut les effacer. Ne considérez pas une sauvegarde SQLite seule comme une copie des vidéos/documents.
-
-Les limites quotidiennes sont calculées dans le fuseau **Africa/Abidjan** : 5 messages par compte et 2 vidéos par auteur chef/enseignant par défaut. Les dérogations vidéo temporaires sont auditées. Les vidéos acceptées sont MP4 ou WebM, avec vérification de conteneur et limite de taille (1–25 Mo, valeur initiale 10 Mo) ; pour contrôler la durée maximale, installer séparément `ffprobe` et régler `AC_FFPROBE` sur son chemin absolu. Sans cela, laisser la durée à **0 = non contrôlée** ; aucune compression/transcodage vidéo n’est fourni. Essayer la lecture dans les navigateurs cibles avec le codec réellement utilisé.
-
-La surveillance technique suit les indicateurs observables dans **ce processus Node.js**. Les alertes arrivent dans l’application et sont proposées à Web Push si VAPID et l’abonnement du chef sont configurés. Sur Render Free, le processus peut être mis en sommeil et ne surveille pas pendant ce temps ; configurez aussi les alertes Render et un monitoring externe. Le stockage libre renvoyé par le système n’est pas forcément le quota exact du plan. Le nettoyage planifié ne concerne que les anciens fichiers temporaires `data/temp/ac-tmp-*` ; aucune suppression automatique des comptes, notes, documents, journaux ou preuves. L’archivage manuel des connexions de plus d’un an crée une sauvegarde SQLite préalable et conserve ces événements dans `archived_login_events`. Gardez une copie **hors de Render** de la base et de `uploads/`.
-
-La création de rôles personnalisés est limitée à une liste de permissions vérifiées côté serveur ; les permissions administratives ou d’édition de résultats ne peuvent pas être attribuées à un nouveau rôle. Un délégué de niveau doit avoir un niveau correspondant à son mandat et les permissions `announcements.create` et `delegation.relay` ; la publication officielle reste soumise à validation. La suppression d’une attribution n’efface pas le compte. Les mandats peuvent expirer, et les rôles personnalisés peuvent être suspendus/réactivés.
+Pour le dossier d'import **optionnel** d'une ancienne SQLite complète, les scripts `migrate-sqlite-to-postgres.js`, `restore-postgres.js` et le compte rendu sont conservés dans le colis. **Ne lancez jamais l'importeur sur une base PostgreSQL où des comptes nouveaux existent déjà** : il refuse volontairement la destination non vide. Les autres anciennes données éventuelles ne sont pas réputées migrées du simple fait de l'abandon de cet unique compte.
