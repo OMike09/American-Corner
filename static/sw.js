@@ -1,6 +1,6 @@
 /* American Corner PWA: cache the public shell only. Never cache account/API/grades/files. */
-const CACHE='american-corner-public-v14-notices-audio';
-const SHELL=['/','/offline.html','/app.css?v=14-notices-audio','/app.js?v=14-notices-audio','/i18n.js?v=14-notices-audio','/build.js?v=14-notices-audio','/manifest.webmanifest','/chef.webmanifest','/brand/official-logo.webp?v=13-brand','/icons/icon-192.png?v=13-brand','/icons/icon-512.png?v=13-brand','/icons/maskable-512.png?v=13-brand','/icons/apple-touch-icon.png?v=13-brand','/icons/favicon.svg?v=13-brand'];
+const CACHE='american-corner-public-v15-nav-notifications';
+const SHELL=['/','/offline.html','/app.css?v=15-nav-notifications','/app.js?v=15-nav-notifications','/i18n.js?v=15-nav-notifications','/build.js?v=15-nav-notifications','/manifest.webmanifest','/chef.webmanifest','/brand/official-logo.webp?v=13-brand','/icons/icon-192.png?v=13-brand','/icons/icon-512.png?v=13-brand','/icons/maskable-512.png?v=13-brand','/icons/apple-touch-icon.png?v=13-brand','/icons/favicon.svg?v=13-brand'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>{
   // A first installation can activate at once; an upgrade waits for explicit consent.

@@ -52,3 +52,19 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 /* Notice and voice controls, compact and usable on narrow screens. */
 .voice-controls{border:1px solid #aec9d4;background:#f2f8fa;border-radius:12px;padding:12px;margin:12px 0}.voice-controls audio,.publication-audio{display:block;width:100%;max-width:550px;margin:10px 0}.voice-controls .actions{flex-wrap:wrap}.teacher-path-choices{max-height:210px;overflow:auto;display:grid;grid-template-columns:1fr;gap:5px;padding:8px;border:1px solid #d4e0e6;border-radius:8px}.teacher-path-choices label{display:flex;gap:8px;align-items:center;padding:4px 5px}.teacher-path-choices label[hidden]{display:none}#teacher-path-selected{display:block;overflow-wrap:anywhere;margin-top:8px}
 @media(max-width:580px){.voice-controls .actions>*{max-width:100%;white-space:normal}.voice-controls{padding:10px}}
+/* Navigation and notification state: clear but restrained on desktop and mobile. */
+.notification-open-state{display:inline-flex;align-items:center;gap:5px;color:#536d7d;font-weight:700}
+.notification-open-state.is-open{color:#0758bd;background:#e8f2ff;border:1px solid #a3c9fb;border-radius:999px;padding:1px 8px;font-weight:800}
+.notification-open-state.is-open::before{content:'✓';font-weight:900}
+.stat-link{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;position:relative}
+.stat-link:hover,.stat-link:focus-visible{border-color:#16847b;box-shadow:0 9px 26px #163d4a22;outline:2px solid transparent}
+.stat-link .corner{pointer-events:none}
+.user-view-tabs{margin:0 0 15px}.user-view-tabs .btn{min-height:36px}
+.topbar-account{display:inline-flex;align-items:center;gap:10px;border:0;background:transparent;color:inherit;padding:4px;border-radius:10px;min-width:0}
+.topbar-account:hover,.topbar-account:focus-visible{background:#e9f3ef;outline:2px solid #258277}
+#page.page-enter-forward{animation:ac-page-forward .2s ease-out both;transform-origin:center center}
+#page.page-enter-back{animation:ac-page-back .2s ease-out both;transform-origin:center center}
+@keyframes ac-page-forward{from{opacity:.65;transform:translateX(17px) rotateY(-1deg)}to{opacity:1;transform:translateX(0) rotateY(0)}}
+@keyframes ac-page-back{from{opacity:.65;transform:translateX(-17px) rotateY(1deg)}to{opacity:1;transform:translateX(0) rotateY(0)}}
+@media(max-width:780px){.topbar-account .topbar-user{display:none}.topbar-account .avatar{width:33px;height:33px}.stat-link{min-height:120px}}
+@media(prefers-reduced-motion:reduce){#page.page-enter-forward,#page.page-enter-back{animation:none!important;transform:none!important;opacity:1!important}html{scroll-behavior:auto}.pending-pulse{animation:none!important}}
