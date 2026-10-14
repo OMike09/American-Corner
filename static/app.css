@@ -68,3 +68,29 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 @keyframes ac-page-back{from{opacity:.65;transform:translateX(-17px) rotateY(1deg)}to{opacity:1;transform:translateX(0) rotateY(0)}}
 @media(max-width:780px){.topbar-account .topbar-user{display:none}.topbar-account .avatar{width:33px;height:33px}.stat-link{min-height:120px}}
 @media(prefers-reduced-motion:reduce){#page.page-enter-forward,#page.page-enter-back{animation:none!important;transform:none!important;opacity:1!important}html{scroll-behavior:auto}.pending-pulse{animation:none!important}}
+
+/* v16 — larger, proportional rendering of the ONE official photo on each existing screen. */
+.app-loading{display:grid;place-items:center;min-height:100vh;min-height:100dvh;background:var(--paper);color:var(--navy);font-weight:600;text-align:center;padding:24px}
+.official-logo{max-width:100%;object-fit:contain;object-position:center}
+.auth-story .brand{display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-width:100%}
+.auth-story .official-logo{width:min(100%,clamp(260px,34vw,490px));max-height:min(31vh,300px);margin:0;height:auto;aspect-ratio:1024/487;object-fit:contain}
+.auth-story .brand>div{line-height:1.2}
+.sidebar .official-logo{width:clamp(138px,12vw,192px);margin:0 0 10px}
+.sidebar .brand{flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.welcome-logo{width:min(100%,clamp(220px,27vw,420px));max-height:220px;margin-bottom:15px}
+.notifications-logo{width:min(100%,clamp(245px,35vw,400px));max-height:215px;margin:0 0 20px}
+@media(max-width:780px){
+ .auth-story{min-height:0;gap:28px}
+ .auth-story .brand{width:100%}
+ .auth-story .official-logo{width:min(100%,440px);max-height:33vh;max-height:33dvh}
+ .welcome-logo{width:min(100%,340px);max-height:180px}
+}
+@media(max-width:580px){
+ .auth-story .official-logo{width:min(100%,440px);max-height:30vh;max-height:30dvh}
+ .welcome-logo{width:min(100%,335px);max-height:165px}
+ .notifications-logo{width:min(100%,330px);max-height:175px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ .auth-story .official-logo{width:min(100%,280px);max-height:32vh;max-height:32dvh}
+ .auth-story{gap:12px}
+}
