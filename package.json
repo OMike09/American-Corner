@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Plateforme du Département d'anglais de l'Université de Bouaké",
-  "engines": {"node": ">=20 <26"},
+  "engines": {
+    "node": ">=20 <26"
+  },
   "scripts": {
     "start": "node server.js",
     "test": "node --test tests/*.test.js"
@@ -11,6 +13,7 @@
   "dependencies": {
     "better-sqlite3": "12.6.2",
     "express": "5.3.0",
-    "nodemailer": "7.0.11"
+    "nodemailer": "^10.1.0",
+    "web-push": "^3.6.7"
   }
 }

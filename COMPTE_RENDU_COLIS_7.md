@@ -1,0 +1,33 @@
+# Compte rendu — colis 7 · American Corner
+
+**État : code local testé, non déployé sur Render.** À la dernière vérification du domaine, `https://amer-corner.oymiketech.com/healthz` renvoyait 200 et `/chef` 404 : le service distant exécute encore une ancienne version. Les fonctions ci-dessous ne sont pas présentées comme déjà en service en ligne.
+
+## Réemploi des fonctions existantes
+
+Le colis 6 comportait déjà des rôles dynamiques et leur audit, la séparation des portails chef/public, des annonces/documents ciblés, des sauvegardes SQLite, des suivis de personnes ayant vu, les notifications internes et une intégration Web Push facultative. Le colis 7 étend ces éléments sans remplacer les circuits de publication et de résultats.
+
+## Implémenté et testé localement
+
+1. **Analyse et maintenance (chef)** : rapport de volume SQLite/fichiers, taille des médias, fichiers orphelins (non supprimés), doublons documentaires vérifiés par empreinte SHA-256, anciens événements de connexion, intégrité SQLite, espace libre, mémoire, lenteurs, erreurs et échecs push enregistrés. Rapport avec gravité et recommandations. Analyse limitée aux 2 000 premiers fichiers pour ne pas bloquer indéfiniment le serveur : elle indique alors qu’elle est partielle.
+2. **Nettoyage et conservation** : prévisualisation, quantité/conséquence/restauration, phrase explicite et journal d’audit pour supprimer uniquement les fichiers anciens `data/temp/ac-tmp-*`. Fréquence et conservation réglables par le chef ; pas d’effacement lié à l’inactivité d’un utilisateur. Anciennes connexions archivables par lots de 1 000, avec **sauvegarde SQLite avant déplacement** vers `archived_login_events`. Les comptes, notes, documents, vidéos, preuves et audits restent intacts.
+3. **Alertes préventives** : niveaux information/avertissement/critique, états nouveau/en traitement/résolu, date, impact et action conseillée ; alertes sur stockage faible, mémoire élevée, erreurs répétées, erreurs SQLite, requêtes lentes et échecs push durables. Notification interne au chef et mise en file Web Push lorsque configuré. Les indicateurs système restent approximatifs selon l’hébergeur.
+4. **Affichage** : préférence individuelle 14–24 px, aperçu, réinitialisation et conservation en SQLite ; tailles des textes CSS adaptatives et contrôles mobiles souples. Politique chef : défaut, recommandation et bornes accessibles 14–24 px ; la préférence personnelle est conservée puis ajustée à la plage si elle change.
+5. **Messages privés** : stockage SQLite, accès aux participants seulement, 5 par jour initialement en fuseau Africa/Abidjan, limitation transactionnelle côté serveur, délai de 3 secondes entre envois, limites par rôle, suspensions par rôle/compte et réactivation. Signalements visibles sans message, examen individuel avec justification et audit, résolution du signalement.
+6. **Vidéos** : chef et enseignants de leurs niveaux, quota initial 2/jour côté serveur, réglage par rôle et dérogation individuelle temporaire, taille et format contrôlés (MP4/WebM), stockage et lecture protégés, groupes de niveau, masquage/restauration auditée. Une courte vidéo MP4 réelle a été téléversée et récupérée dans les tests HTTP. Si `AC_FFPROBE` est configuré et `ffprobe` installé, une durée maximale peut être imposée ; sinon ce contrôle reste désactivé.
+7. **Direction et rôles** : liens sur le tableau de bord chef, contrôles centraux et audit ; nouveau rôle dynamique avec description, permissions autorisées, niveau et mandat temporaire ; attribution, expiration, suspension/réactivation, retrait sans suppression du titulaire. Délégué de niveau limité aux étudiants de son niveau, nouvelle officielle restant soumise à validation. Aucun rôle secondaire ne peut s’accorder des permissions administratives ou modifier des résultats officiels.
+
+## Vérifications exécutées
+
+`npm test` : **22 tests réussis** (dont tests HTTP de bout en bout et test de rendu JavaScript). Vérifications spécifiques : rapport/alerte déclenchée par seuil de stockage, notification interne, prévisualisation et suppression limitée aux temporaires avec fichier protégé intact, archive et sauvegarde, réglages et préférences de police, confidentialité et quotas des messages, signalement et examen audité, publication vidéo par chef/enseignant et quotas, masquage et accès par niveau, modifications des limites, création/attribution/expiration/suspension de rôle, refus d’auto-attribution et d’accès interdit, journal d’audit. `node --check` a réussi pour les fichiers JavaScript ; `npm audit --audit-level=high` signale **0 vulnérabilité**.
+
+## Non livrés ou nécessitant une validation supplémentaire
+
+- Compression/transcodage des photos/vidéos/audio, mesure universelle de durée vidéo et format/codec paramétrable : **non implémentés**. Le navigateur doit supporter le codec ; tester un vrai fichier et la lecture sur Android/iPhone. `ffprobe` est une dépendance externe facultative pour contrôler la durée, non fournie avec Node.js.
+- Purge de fichiers orphelins et de données administratives importantes, quotas globaux de stockage ou téléchargement, restauration complète depuis l’interface, politiques de conservation métier : **non implémentées** par sécurité. Seuls les temporaires peuvent être purgés ; les connexions anciennes sont archivées sans perte d’historique. La sauvegarde pré-archive ne couvre que SQLite, pas `uploads/`.
+- Rôle de délégué limité à un **niveau** ; périmètre « groupe spécifique », délégation d’attribution des rôles à d’autres responsables, liste personnalisée de permissions interdites par rôle : **non implémentés**. La liste des permissions sensibles interdites est imposée côté serveur.
+- Redémarrage automatique contrôlé du service Render, pause de tâches non essentielles, télémétrie CPU précise, surveillance pendant la mise en sommeil du service : **non implémentés**. Des alertes ne garantissent pas l’absence de panne.
+- Aucune réception Web Push réelle sur téléphone, ni essai visuel mobile/tablette, ni restauration d’une sauvegarde de production n’a été vérifié dans ce colis. Ils requièrent le déploiement et des appareils/configurations réels.
+
+## À faire avant utilisation réelle
+
+Sauvegarder conjointement SQLite **et** `uploads/` hors du service ; déployer l’archive extraite dans le dépôt Render (`npm install` / `npm start`) et vérifier `/chef` = 200. Maintenir `AC_BASE_URL=https://amer-corner.oymiketech.com`. Configurer VAPID et les abonnements des chefs pour le push ; ajouter `ffprobe` et `AC_FFPROBE` uniquement si un contrôle de durée est exigé. Tester les navigateurs cibles, le stockage persistant, les alertes et un scénario de restauration hors production. Render Free peut perdre base/fichiers et mettre le processus en sommeil.

@@ -3,11 +3,11 @@ const {test}=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),net=require('node:net'),{spawn,execFileSync}=require('node:child_process');
 const ROOT=path.resolve(__dirname,'..');
 async function freePort(){return new Promise(resolve=>{const s=net.createServer();s.listen(0,'127.0.0.1',()=>{const port=s.address().port;s.close(()=>resolve(port))})})}
-async function start(demo=true){const data=fs.mkdtempSync(path.join(os.tmpdir(),'ac-node-test-')),port=await freePort();const env={...process.env,AC_DEMO:demo?'1':'0',AC_DATA:data,PORT:String(port),AC_ADMIN_EMAIL:'chef@example.org',AC_ADMIN_PASSWORD:'RenderStrong2026!'};const child=spawn(process.execPath,['server.js'],{cwd:ROOT,env,stdio:['ignore','pipe','pipe']});let logs='';child.stderr.on('data',b=>logs+=b.toString());child.stdout.on('data',b=>logs+=b.toString());const base=`http://127.0.0.1:${port}`;for(let i=0;i<70;i++){try{const r=await fetch(base+'/healthz');if(r.ok)return {data,child,base,env}}catch{}await new Promise(r=>setTimeout(r,75))}child.kill();throw Error('Server failed to start: '+logs)}
+async function start(demo=true,extraEnv={}){const data=fs.mkdtempSync(path.join(os.tmpdir(),'ac-node-test-')),port=await freePort();const env={...process.env,AC_DEMO:demo?'1':'0',AC_DATA:data,PORT:String(port),AC_ADMIN_EMAIL:'chef@example.org',AC_ADMIN_PASSWORD:'RenderStrong2026!',...extraEnv};const child=spawn(process.execPath,['server.js'],{cwd:ROOT,env,stdio:['ignore','pipe','pipe']});let logs='';child.stderr.on('data',b=>logs+=b.toString());child.stdout.on('data',b=>logs+=b.toString());const base=`http://127.0.0.1:${port}`;for(let i=0;i<70;i++){try{const r=await fetch(base+'/healthz');if(r.ok)return {data,child,base,env}}catch{}await new Promise(r=>setTimeout(r,75))}child.kill();throw Error('Server failed to start: '+logs)}
 class Client{constructor(base){this.base=base;this.cookie='';this.csrf=''}async call(method,url,data,options={}){const headers={...(options.headers||{})};if(this.cookie)headers.Cookie=this.cookie;if(this.csrf&&!options.omitCsrf)headers['X-CSRF-Token']=this.csrf;let body=options.raw;if(data!==undefined){headers['Content-Type']='application/json';body=JSON.stringify(data)}const r=await fetch(this.base+url,{method,headers,body,redirect:'manual'});const cookie=r.headers.get('set-cookie');if(cookie)this.cookie=cookie.split(';')[0];const buf=Buffer.from(await r.arrayBuffer());let result;try{result=JSON.parse(buf.toString())}catch{result=buf}if(result?.csrf)this.csrf=result.csrf;return [r.status,result]}async login(email,password){return this.call('POST','/api/login',{email,password})}}
 async function expect(c,m,url,data,status=200,options={}){const [code,result]=await c.call(m,url,data,options);assert.equal(code,status,`${m} ${url}: ${JSON.stringify(result)}`);return result}
 async function stop(service){service.child.kill();await new Promise(resolve=>service.child.once('exit',resolve))}
-test('Render Node.js bootstrap and health check',async()=>{const s=await start(false);try{const c=new Client(s.base);assert.deepEqual(await expect(c,'GET','/healthz'),{status:'ok'});assert.equal((await expect(c,'GET','/api/meta')).demo,false);await expect(c,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'})}finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}});
+test('Render Node.js bootstrap and health check',async()=>{const s=await start(false);try{const c=new Client(s.base);assert.deepEqual(await expect(c,'GET','/healthz'),{status:'ok'});assert.equal((await expect(c,'GET','/api/meta')).demo,false);await expect(c,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'})}finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}});
 test('role boundaries, grades, uploads, requests and backup survive real HTTP requests',async()=>{const s=await start(true);try{
  const guest=new Client(s.base),admin=new Client(s.base),teacher=new Client(s.base),student=new Client(s.base),other=new Client(s.base);
  const meta=await expect(guest,'GET','/api/meta'),year=meta.years[0].id;
@@ -17,7 +17,7 @@ test('role boundaries, grades, uploads, requests and backup survive real HTTP re
  await expect(guest,'GET','/api/dashboard',undefined,401);
  const waiting=new Client(s.base);assert.equal((await expect(waiting,'POST','/api/login',{email:'test@example.org',password:'TestPassword123'},202)).pending,true);
  assert.equal((await expect(waiting,'GET','/api/me')).pending,true);await expect(waiting,'GET','/api/results',undefined,401);
- await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+ await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
  const enrolled=(await expect(admin,'GET','/api/users')).items.find(x=>x.email==='test@example.org');assert.equal(enrolled.status,'pending');assert.deepEqual(enrolled.roles.map(x=>x.name),['etudiant']);
  await expect(admin,'PATCH',`/api/users/${enrolled.id}`,{status:'active'},403,{omitCsrf:true});
  await expect(admin,'PATCH',`/api/users/${enrolled.id}`,{status:'active',roles:['etudiant']});
@@ -34,7 +34,7 @@ test('role boundaries, grades, uploads, requests and backup survive real HTTP re
  await expect(teacher,'POST','/api/results',{course_id:course,student_id:enrolled.id,score:14.5});const result=(await expect(admin,'GET','/api/results')).items[0];assert.equal((await expect(student,'GET','/api/results')).items.length,0);
  await expect(admin,'PATCH',`/api/results/${result.id}`,{status:'published'},400);
  await expect(admin,'PATCH',`/api/results/${result.id}`,{status:'validated'});await expect(admin,'PATCH',`/api/results/${result.id}`,{status:'published'});
- assert.equal((await expect(student,'GET','/api/results')).items[0].score,14.5);
+ assert.equal((await expect(student,'GET','/api/results')).items[0].score,undefined);assert.equal((await expect(student,'GET',`/api/results/${result.id}`)).score,14.5);
  await expect(other,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});assert.equal((await expect(other,'GET','/api/results')).items.length,0);
  await expect(admin,'PATCH',`/api/results/${result.id}`,{score:15},400);await expect(admin,'PATCH',`/api/results/${result.id}`,{score:15,reason:'Erreur de transcription'});assert.equal((await expect(student,'GET','/api/results')).items.length,0);
  await expect(admin,'POST','/api/users',{name:'Étudiante L1',email:'l1extra@example.org',identifier:'L1-TEST',password:'TestPassword123',role:'etudiant',level:'Licence 1',year_id:year});
@@ -54,7 +54,7 @@ test('one-click approval opens an existing pending session immediately; rejectio
  try{
   const admin=new Client(s.base),candidate=new Client(s.base),rejected=new Client(s.base),signedOut=new Client(s.base);
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   async function register(c,mail){await expect(c,'POST','/api/register',{name:'Compte Test',email:mail,identifier:mail,password:'TestPassword123',level:'Licence 2',track:'Études anglophones',year_id:year,kind:'etudiant'},202);return (await expect(admin,'GET','/api/users')).items.find(x=>x.email===mail).id}
   const id=await register(candidate,'approved@example.org');
   assert.equal((await expect(candidate,'GET','/api/me')).pending,true);
@@ -88,7 +88,7 @@ test('scoped sharing: teacher course, multi-target read receipts, delivery and r
  const s=await start(true);
  try{
   const admin=new Client(s.base),teacher=new Client(s.base),student=new Client(s.base),outsider=new Client(s.base);
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
   const studentId=(await expect(admin,'POST','/api/users',{name:'L3 English',email:'l3a@example.org',identifier:'L3A',password:'TestPassword123',role:'etudiant',level:'Licence 3',track:'Linguistique',year_id:year})).id;
@@ -114,8 +114,8 @@ test('scoped sharing: teacher course, multi-target read receipts, delivery and r
   await expect(student,'POST','/api/notifications/received',{ids:[notices[0].id]});
   const afterDelivery=await expect(teacher,'GET',`/api/share/announcement/${id}/stats`);assert.equal(afterDelivery.notification_received,1);assert.equal(afterDelivery.viewed,0);
   await expect(student,'GET',`/api/announcements/${id}`);await expect(student,'GET',`/api/announcements/${id}`);
-  const stats1=await expect(teacher,'GET',`/api/share/announcement/${id}/stats`);assert.equal(stats1.viewed,1);assert.equal(stats1.total_opens,2);assert.equal(stats1.acknowledged,0);assert.equal(stats1.recipients[0].name,'L3 English');assert(stats1.recipients[0].first_viewed_at);assert(stats1.recipients[0].last_viewed_at);
-  await expect(student,'GET',`/api/share/announcement/${id}/stats`,undefined,403);
+  const stats1=await expect(teacher,'GET',`/api/share/announcement/${id}/stats`);assert.equal(stats1.viewed,1);assert.equal(stats1.unique_views,1);assert.equal(stats1.total_opens,2);assert.equal(stats1.percent,100);assert.equal(stats1.recipients[0].level,'Licence 3');assert(stats1.recipients[0].roles.includes('etudiant'));assert(stats1.last_viewed_at);assert.equal(stats1.acknowledged,0);assert.equal(stats1.recipients[0].name,'L3 English');assert(stats1.recipients[0].first_viewed_at);assert(stats1.recipients[0].last_viewed_at);
+  await expect(student,'GET',`/api/share/announcement/${id}/stats`,undefined,403);assert.equal((await expect(teacher,'GET','/api/publications/tracking')).items.find(x=>x.id===id&&x.type==='announcement').percent,100);await expect(student,'GET','/api/publications/tracking');assert(!(await expect(student,'GET','/api/publications/tracking')).items.some(x=>x.id===id));
   const reminder=await expect(teacher,'POST',`/api/share/announcement/${id}/remind`,{mode:'unacknowledged'});assert.equal(reminder.count,1);
   assert.equal((await expect(teacher,'POST',`/api/share/announcement/${id}/remind`,{mode:'unacknowledged'})).count,0);
   assert.equal((await expect(teacher,'POST',`/api/share/announcement/${id}/remind`,{mode:'unread'})).count,0);
@@ -138,7 +138,7 @@ test('chief, level manager, secretariat, delegate, Master and PhD respect sharin
  const s=await start(true);
  try{
   const admin=new Client(s.base),teacher=new Client(s.base),manager=new Client(s.base),secretary=new Client(s.base),delegate=new Client(s.base),master=new Client(s.base),phd=new Client(s.base);
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
   const create=async(name,email,role,level)=> (await expect(admin,'POST','/api/users',{name,email,identifier:email,password:'TestPassword123',role,level,track:'Linguistique',year_id:year})).id;
@@ -178,7 +178,7 @@ test('result consultation tracking shows names/dates but never grades to scope-o
  const s=await start(true);
  try{
   const admin=new Client(s.base),teacher=new Client(s.base),student=new Client(s.base),other=new Client(s.base),manager=new Client(s.base);
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
   await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
@@ -192,10 +192,12 @@ test('result consultation tracking shows names/dates but never grades to scope-o
   const second=(await expect(teacher,'POST','/api/results',{course_id:course,student_id:otherId,score:17})).id;
   for(const id of [first,second]){await expect(admin,'PATCH',`/api/results/${id}`,{status:'validated'});await expect(admin,'PATCH',`/api/results/${id}`,{status:'published'})}
   assert.equal((await expect(teacher,'GET',`/api/results/consultations?course_id=${course}`)).items.filter(x=>x.first_viewed_at).length,0);
-  await expect(other,'POST','/api/results/seen',{ids:[first]},403);
-  await expect(student,'POST','/api/results/seen',{ids:[first]});
+  await expect(other,'GET',`/api/results/${first}`,undefined,403);
+  assert.equal((await expect(student,'GET','/api/results')).items.find(x=>x.id===first).score,undefined);
+  assert.equal((await expect(teacher,'GET',`/api/results/consultations?course_id=${course}`)).items.filter(x=>x.first_viewed_at).length,0);
+  assert.equal((await expect(student,'GET',`/api/results/${first}`)).score,12);await expect(student,'GET',`/api/results/${first}`);
   const tracking=await expect(teacher,'GET',`/api/results/consultations?course_id=${course}`);
-  assert.equal(tracking.items.length,2);assert.equal(tracking.items.filter(x=>x.first_viewed_at).length,1);assert(!('score' in tracking.items[0]));
+  assert.equal(tracking.items.length,2);assert.equal(tracking.items.filter(x=>x.first_viewed_at).length,1);assert.equal(tracking.items.find(x=>x.result_id===first).view_count,2);assert(!('score' in tracking.items[0]));
   await expect(other,'GET',`/api/results/consultations?course_id=${course}`,undefined,403);
   await expect(manager,'GET',`/api/results/consultations?course_id=${course}`,undefined,403);
   const role=(await expect(admin,'GET','/api/roles')).items.find(x=>x.name==='responsable_niveau');const permissions=JSON.parse(role.permissions);permissions.push('results.consultations.level');
@@ -211,7 +213,7 @@ test('result consultation tracking shows names/dates but never grades to scope-o
 test('calendar events use the same scoped recipients, view tracking and withdrawal',async()=>{
  const s=await start(true);try{
   const admin=new Client(s.base),student=new Client(s.base),other=new Client(s.base);
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
   await expect(admin,'POST','/api/users',{name:'Étudiant L1',email:'l1@example.org',identifier:'L1',password:'TestPassword123',role:'etudiant',level:'Licence 1',year_id:year});
@@ -230,7 +232,7 @@ test('calendar events use the same scoped recipients, view tracking and withdraw
 test('removing a course enrollment revokes protected content and prevents reminders',async()=>{
  const s=await start(true);try{
   const admin=new Client(s.base),teacher=new Client(s.base),student=new Client(s.base),other=new Client(s.base);
-  await expect(admin,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
   await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
   await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
   const year=(await expect(admin,'GET','/api/meta')).years[0].id;
@@ -247,5 +249,80 @@ test('removing a course enrollment revokes protected content and prevents remind
   assert.equal((await expect(teacher,'POST',`/api/share/announcement/${post.id}/remind`,{mode:'unread'})).count,1);
   assert(!(await expect(other,'GET','/api/notifications')).items.some(x=>x.entity_id===post.id));
   assert((await expect(student,'GET','/api/announcements')).items.some(x=>x.id===post.id));
+ }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
+});
+test('notifications count, direct link, read state and protected result payloads',async()=>{
+ const s=await start(true);try{
+  const admin=new Client(s.base),student=new Client(s.base),other=new Client(s.base);
+  await expect(admin,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
+  await expect(other,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
+  const before=(await expect(student,'GET','/api/notifications/count')).unread;
+  const post=await expect(admin,'POST','/api/announcements',{title:'Annonce de service',body:'Ouvrez cette publication.',category:'Information pédagogique',targets:[{type:'person',id:2}],publish:true});
+  const list=await expect(student,'GET','/api/notifications'),n=list.items.find(x=>x.entity_id===post.id);assert(n);
+  assert.equal((await expect(student,'GET','/api/notifications/count')).unread,before+1);
+  assert.equal((await expect(student,'GET',`/api/notifications/${n.id}`)).entity_type,'announcement');
+  await expect(other,'GET',`/api/notifications/${n.id}`,undefined,404);
+  await expect(student,'POST','/api/notifications/received',{ids:[n.id]});
+  assert.equal((await expect(admin,'GET',`/api/share/announcement/${post.id}/stats`)).viewed,0);
+  assert.equal((await expect(student,'POST',`/api/notifications/${n.id}/read`)).unread,before);
+  assert.equal((await expect(admin,'GET',`/api/share/announcement/${post.id}/stats`)).viewed,0);
+  await expect(student,'GET',`/api/announcements/${post.id}`);
+  assert.equal((await expect(admin,'GET',`/api/share/announcement/${post.id}/stats`)).viewed,1);
+  await expect(student,'GET',`/api/announcements/${post.id}`);await expect(student,'GET',`/api/notifications/${n.id}`);
+  const unique=await expect(admin,'GET',`/api/share/announcement/${post.id}/stats`);assert.equal(unique.viewed,1);assert.equal(unique.unique_views,1);assert.equal(unique.total_opens,2);
+  assert.equal((await expect(admin,'GET','/api/announcements')).items.find(x=>x.id===post.id).views,1);
+  assert.equal((await expect(student,'GET','/api/announcements')).items.find(x=>x.id===post.id).views,undefined);
+  await expect(admin,'PATCH',`/api/announcements/${post.id}`,{status:'withdrawn'});
+  await expect(student,'GET',`/api/notifications/${n.id}`,undefined,404);
+  assert.equal((await expect(student,'GET','/api/notifications/count')).unread,before);
+ }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
+});
+test('configured VAPID subscription endpoints require login, CSRF, trusted push hosts, and preferences',async()=>{
+ const webpush=require('web-push'),keys=webpush.generateVAPIDKeys();const s=await start(true,{AC_VAPID_PUBLIC_KEY:keys.publicKey,AC_VAPID_PRIVATE_KEY:keys.privateKey,AC_VAPID_SUBJECT:'mailto:contact@example.org'});
+ try{const guest=new Client(s.base),student=new Client(s.base),teacher=new Client(s.base);
+  await expect(guest,'GET','/api/push/status',undefined,401);
+  await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
+  await expect(teacher,'POST','/api/login',{email:'enseignant@american-corner.test',password:'DemoUser2026!'});
+  const config=await expect(student,'GET','/api/push/status');assert.equal(config.configured,true);assert.equal(config.public_key,keys.publicKey);assert(!('private_key' in config));
+  const sub={endpoint:'https://fcm.googleapis.com/fcm/send/test-'+Date.now(),keys:{p256dh:'A'.repeat(88),auth:'B'.repeat(22)}};
+  await expect(student,'POST','/api/push/subscriptions',{...sub,endpoint:'https://127.0.0.1/internal'},400);
+  await expect(student,'POST','/api/push/subscriptions',sub,403,{omitCsrf:true});
+  await expect(student,'POST','/api/push/subscriptions',sub);
+  assert.equal((await expect(student,'GET','/api/push/status')).devices,1);
+  await expect(teacher,'DELETE','/api/push/subscriptions',{endpoint:sub.endpoint});
+  assert.equal((await expect(student,'GET','/api/push/status')).devices,1);
+  await expect(student,'PATCH','/api/push/preferences',{enabled:false});assert.equal((await expect(student,'GET','/api/push/status')).enabled,false);
+  await expect(student,'POST','/api/push/test',{},400);
+  await expect(student,'DELETE','/api/push/subscriptions',{endpoint:sub.endpoint});assert.equal((await expect(student,'GET','/api/push/status')).devices,0);
+  await expect(student,'POST','/api/push/subscriptions',sub);await expect(student,'POST','/api/logout',{});await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});assert.equal((await expect(student,'GET','/api/push/status')).devices,0);
+ }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
+});
+test('separate unlinked chief entrance rejects standard accounts and excludes chiefs from public login',async()=>{
+ const s=await start(true);try{
+  const visitor=new Client(s.base),chief=new Client(s.base),student=new Client(s.base);
+  const publicHtml=String(await expect(visitor,'GET','/'));
+  assert.match(publicHtml,/manifest\.webmanifest/);assert.doesNotMatch(publicHtml,/chef\.webmanifest|\/chef/);
+  const chiefHtml=String(await expect(visitor,'GET','/chef'));
+  assert.match(chiefHtml,/chef\.webmanifest/);assert.match(chiefHtml,/noindex/);
+  const manifest=await expect(visitor,'GET','/chef.webmanifest');assert.equal(manifest.start_url,'/chef');assert.equal(manifest.id,'/chef');
+  await expect(student,'POST','/api/chef/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'},401);
+  await expect(chief,'POST','/api/login',{email:'chef@example.org',password:'RenderStrong2026!'},401);
+  assert.equal((await expect(chief,'GET','/api/me')).user,null);
+  await expect(chief,'POST','/api/chef/login',{email:'chef@example.org',password:'RenderStrong2026!'});
+  assert((await expect(chief,'GET','/api/me')).user.roles.some(r=>r.name==='chef'));
+  await expect(student,'POST','/api/login',{email:'etudiant@american-corner.test',password:'DemoUser2026!'});
+  await expect(student,'GET','/api/users',undefined,403);
+  const reset=await expect(visitor,'POST','/api/password/forgot',{email:'chef@example.org'});
+  assert.match(reset.demo_reset_link,/\/chef#reset\//);
+ }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
+});
+
+test('canonical custom domain is used in reset links for public users and chief',async()=>{
+ const s=await start(true,{AC_BASE_URL:'https://amer-corner.oymiketech.com'});try{const visitor=new Client(s.base);
+  const publicLink=await expect(visitor,'POST','/api/password/forgot',{email:'etudiant@american-corner.test'});
+  assert.match(publicLink.demo_reset_link,/^https:\/\/amer-corner\.oymiketech\.com\/#reset\//);
+  const chiefLink=await expect(visitor,'POST','/api/password/forgot',{email:'chef@example.org'});
+  assert.match(chiefLink.demo_reset_link,/^https:\/\/amer-corner\.oymiketech\.com\/chef#reset\//);
  }finally{await stop(s);fs.rmSync(s.data,{recursive:true,force:true})}
 });
