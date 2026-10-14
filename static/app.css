@@ -49,3 +49,6 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 /* Keep all forms reachable when the expandable release details occupy a phone screen. */
 .update-visible #app{padding-bottom:min(48vh,370px)}
 @media(max-width:580px){.update-visible #app{padding-bottom:min(55vh,460px)}}
+/* Notice and voice controls, compact and usable on narrow screens. */
+.voice-controls{border:1px solid #aec9d4;background:#f2f8fa;border-radius:12px;padding:12px;margin:12px 0}.voice-controls audio,.publication-audio{display:block;width:100%;max-width:550px;margin:10px 0}.voice-controls .actions{flex-wrap:wrap}.teacher-path-choices{max-height:210px;overflow:auto;display:grid;grid-template-columns:1fr;gap:5px;padding:8px;border:1px solid #d4e0e6;border-radius:8px}.teacher-path-choices label{display:flex;gap:8px;align-items:center;padding:4px 5px}.teacher-path-choices label[hidden]{display:none}#teacher-path-selected{display:block;overflow-wrap:anywhere;margin-top:8px}
+@media(max-width:580px){.voice-controls .actions>*{max-width:100%;white-space:normal}.voice-controls{padding:10px}}
