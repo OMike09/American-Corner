@@ -2,6 +2,8 @@
 // PWA/web entry only: never replay on internal navigation or change account state.
 (()=>{
  const splash=document.getElementById('ac-splash');if(!splash)return;
+ // Hidden by the constrained-touch media query: restore the immediate v15 mobile entry.
+ if(getComputedStyle(splash).display==='none'){splash.remove();return}
  const logo=splash.querySelector('img');
  const showFallback=()=>{if(logo)logo.hidden=true;splash.classList.add('logo-unavailable')};
  if(logo){logo.addEventListener('error',showFallback,{once:true});if(logo.complete&&!logo.naturalWidth)showFallback()}

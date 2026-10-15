@@ -94,3 +94,20 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
  .auth-story .official-logo{width:min(100%,280px);max-height:32vh;max-height:32dvh}
  .auth-story{gap:12px}
 }
+
+/* v16.0.1 — constrained touch screens only: restore the exact v15 mobile sizing.
+   Desktop and larger tablet rules above stay untouched. No OS or UA sniffing. */
+@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-width:1000px) and (max-height:500px){
+ .auth-story{gap:normal}
+ .auth-story .brand{display:flex;flex-direction:row;align-items:center;gap:12px;max-width:none;width:auto}
+ .auth-story .brand>div{line-height:inherit}
+ .auth-story .official-logo{width:clamp(96px,14vw,152px);height:auto;max-height:none;margin-right:12px}
+ .sidebar .brand{flex-direction:row;align-items:center;gap:12px;min-width:0}
+ .sidebar .official-logo{width:76px;margin:0 3px 0 0}
+ .welcome-logo{width:clamp(120px,18vw,220px);max-height:none;margin-bottom:12px}
+ .notifications-logo{width:145px;max-height:none;margin:0 0 18px}
+}
+@media (pointer:coarse) and (max-width:780px) and (max-height:500px), (pointer:coarse) and (max-width:560px){.auth-story{min-height:260px}}
+@media (pointer:coarse) and (max-width:560px){.auth-story .official-logo{width:108px}.welcome-logo{width:145px}}
+/* Prevent a wide management table from sizing the mobile shell via its min-content width. */
+@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-width:1000px) and (max-height:500px){#app.app-loading .shell{width:100%;max-width:100%}}
