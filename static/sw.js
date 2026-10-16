@@ -1,6 +1,6 @@
 /* American Corner PWA: cache the public shell only. Never cache account/API/grades/files. */
-const CACHE='american-corner-public-v16-1-mobile-restore';
-const SHELL=['/','/offline.html','/app.css?v=16-1-mobile-restore','/app.js?v=16-opening-logo','/launch.js?v=16-1-mobile-restore','/i18n.js?v=16-opening-logo','/build.js?v=16-1-mobile-restore','/manifest.webmanifest','/chef.webmanifest','/brand/official-logo.webp?v=13-brand','/icons/icon-192.png?v=13-brand','/icons/icon-512.png?v=13-brand','/icons/maskable-512.png?v=13-brand','/icons/apple-touch-icon.png?v=13-brand','/icons/favicon.svg?v=13-brand'];
+const CACHE='american-corner-public-v17-sounds-pubs';
+const SHELL=['/','/offline.html','/app.css?v=17-sounds-pubs','/app.js?v=17-sounds-pubs','/launch.js?v=16-1-mobile-restore','/i18n.js?v=17-sounds-pubs','/build.js?v=17-sounds-pubs','/manifest.webmanifest','/chef.webmanifest','/brand/official-logo.webp?v=13-brand','/sounds/classique.wav','/sounds/discret.wav','/sounds/doux.wav','/sounds/academique.wav','/sounds/dynamique.wav','/icons/icon-192.png?v=13-brand','/icons/icon-512.png?v=13-brand','/icons/maskable-512.png?v=13-brand','/icons/apple-touch-icon.png?v=13-brand','/icons/favicon.svg?v=13-brand'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>{
   // A first installation can activate at once; an upgrade waits for explicit consent.
@@ -35,12 +35,15 @@ self.addEventListener('push',event=>{
   const id=Number(message.id),unread=Math.max(0,Number(message.unread)||0);
   await setUnreadBadge(unread);
   const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-  for(const client of windows)client.postMessage({type:'AC_PUSH_COUNT',unread});
+  const visible=windows.some(client=>client.visibilityState==='visible');
+  for(const client of windows)client.postMessage({type:'AC_PUSH_COUNT',id,unread});
   // Always show a visible notification: iOS requires this for background Web Push.
   await self.registration.showNotification(String(message.title||'American Corner').slice(0,100),{
    body:String(message.body||'Nouvelle information disponible.').slice(0,180),
    icon:'/icons/icon-192.png?v=13-brand',badge:'/icons/icon-192.png?v=13-brand',
    tag:Number.isSafeInteger(id)&&id>0?'ac-notification-'+id:'ac-information',renotify:false,
+   silent:message.sound==='none'||visible,
+   ...((message.vibration&&message.sound!=='none'&&!visible)?{vibrate:[80,50,80]}:{}),
    data:{id:Number.isSafeInteger(id)&&id>0?id:null,area:message.area==='chef'?'chef':'public'}
   });
  })());

@@ -111,3 +111,55 @@ button,.btn,.nav-item{height:auto;min-height:40px;white-space:normal;text-align:
 @media (pointer:coarse) and (max-width:560px){.auth-story .official-logo{width:108px}.welcome-logo{width:145px}}
 /* Prevent a wide management table from sizing the mobile shell via its min-content width. */
 @media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-width:1000px) and (max-height:500px){#app.app-loading .shell{width:100%;max-width:100%}}
+
+/* v17: readable publication cards and message actions, scoped to the affected components. */
+.publication-feed{max-width:880px;text-align:left;min-width:0}
+.publication-feed .announcement{min-width:0;padding:clamp(17px,2.8vw,26px);overflow-wrap:break-word}
+.publication-byline,.publication-detail-meta{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;margin-bottom:11px;color:var(--ink);text-align:left}
+.publication-byline strong,.publication-detail-meta strong{font-size:calc(13px * var(--ac-scale,1))}
+.publication-byline small,.publication-detail-meta small{font-size:calc(12px * var(--ac-scale,1))}
+.publication-tags{margin-bottom:12px}
+.publication-feed .announcement h3{font-size:calc(19px * var(--ac-scale,1));line-height:1.35;margin:0 0 9px;overflow-wrap:break-word}
+.publication-feed .announcement p{font-size:calc(14px * var(--ac-scale,1));line-height:1.65;white-space:pre-wrap;overflow-wrap:break-word;margin:0 0 16px}
+.publication-feed .announcement-foot{align-items:center;gap:9px 13px;text-align:left;overflow-wrap:break-word}
+.publication-feed .announcement-foot .btn{flex:none}
+.modal:has(.publication-detail-meta){text-align:left;max-width:min(760px,100%)}
+.modal:has(.publication-detail-meta) .share-full-text{max-width:65ch;color:var(--ink);font-size:calc(15px * var(--ac-scale,1));line-height:1.7;overflow-wrap:anywhere}
+.modal:has(.publication-detail-meta) .publication-media,.modal:has(.publication-detail-meta) .publication-audio{max-width:100%;height:auto}
+.publication-media-error{padding:12px;color:#923f37;background:#fff3f0;border-radius:8px;overflow-wrap:break-word}
+.sound-settings{max-width:880px;text-align:left}
+.sound-settings p{color:var(--muted)}
+.sound-choices{display:grid;gap:8px;margin:18px 0}
+.sound-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:#fafcfb}
+.sound-choice:has(input:checked){border-color:var(--teal);background:#f1faf6}
+.sound-choice label{display:flex;align-items:center;gap:9px;min-width:0;flex-wrap:wrap;cursor:pointer;font-weight:700}
+.sound-choice input{accent-color:var(--teal)}
+.sound-choice small{color:var(--teal)}
+.sound-choice .btn{flex:none}
+@media(max-width:720px){
+ .notification-list .list-item{display:grid;grid-template-columns:38px minmax(0,1fr);gap:8px 12px;align-items:start;min-width:0}
+ .notification-list .list-item .list-icon{grid-column:1;grid-row:1}
+ .notification-list .list-item .list-body{grid-column:2;grid-row:1;min-width:0;width:100%;overflow-wrap:break-word;word-break:normal}
+ .notification-list .list-item .list-body strong,.notification-list .list-item .list-body p,.notification-list .list-item .list-body small{overflow-wrap:break-word;word-break:normal}
+ .notification-list .list-item .actions{grid-column:2;grid-row:2;margin:0;min-width:0;justify-content:flex-start}
+ .notification-list .list-item .actions .btn{white-space:normal;text-align:center}
+ .communications-own .list-item{display:grid;grid-template-columns:38px minmax(0,1fr);gap:8px 12px;align-items:start}
+ .communications-own .list-icon{grid-column:1;grid-row:1}
+ .communications-own .list-body{grid-column:2;grid-row:1;min-width:0}
+ .communications-own .list-item .actions{grid-column:2;grid-row:2;min-width:0;flex-wrap:wrap}
+ .publication-feed .announcement{padding:18px}
+ .publication-byline,.publication-detail-meta{display:block}
+ .publication-byline small,.publication-detail-meta small{display:block;margin-top:4px}
+ .modal:has(.publication-detail-meta){padding:18px;max-height:calc(100dvh - 28px)}
+ .sound-choice{flex-wrap:wrap}
+}
+@media(max-width:460px){
+ .topbar-left{flex:1;min-width:0}
+ .topbar-right{flex:none}
+ .topbar .crumb{display:block;min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .topbar .install-cta{font-size:0;min-width:36px;padding:8px}
+ .topbar .install-cta svg{width:17px;height:17px}
+ .back-btn{white-space:nowrap;flex-shrink:0}
+ .back-btn svg{flex:none}
+}
+@media(max-width:580px){html,body{overflow-x:hidden}}
